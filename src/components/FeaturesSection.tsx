@@ -1,5 +1,4 @@
 import { Settings, Leaf, Zap, Wrench, Shield, BarChart3 } from "lucide-react";
-import sensorCloseup from "@/assets/sensor-closeup.jpg";
 
 const features = [
   {
@@ -45,30 +44,13 @@ const FeaturesSection = () => (
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
-        <div className="rounded-2xl overflow-hidden shadow-lg border border-border">
-          <img src={sensorCloseup} alt="Sensorik-Nahaufnahme am Glascontainer" loading="lazy" width={1024} height={680} className="w-full object-cover" />
-        </div>
-        <div className="grid sm:grid-cols-2 gap-6">
-          {features.slice(0, 4).map((f) => (
-            <div key={f.title} className="group rounded-xl bg-background p-6 border border-border hover:border-accent/40 transition-colors">
-              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
-                <f.icon className="h-5 w-5 text-accent" />
-              </div>
-              <h3 className="text-base font-semibold text-foreground mb-1.5">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {features.map((f) => (
+          <div key={f.title} className="group rounded-xl bg-background p-6 border border-border hover:border-accent/40 hover:shadow-lg transition-all">
+            <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
+              <f.icon className="h-6 w-6 text-accent" />
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-        {features.slice(4).map((f) => (
-          <div key={f.title} className="group rounded-xl bg-background p-6 border border-border hover:border-accent/40 transition-colors">
-            <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
-              <f.icon className="h-5 w-5 text-accent" />
-            </div>
-            <h3 className="text-base font-semibold text-foreground mb-1.5">{f.title}</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">{f.title}</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
           </div>
         ))}
