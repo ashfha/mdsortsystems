@@ -1,10 +1,16 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo.png";
-import { Menu, X, LogIn } from "lucide-react";
+import { Menu, X, LogIn, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import type { Session } from "@supabase/supabase-js";
+import { toast } from "@/hooks/use-toast";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const navigate = useNavigate();
+
   const links = [
     { label: "Produkt", href: "#features" },
     { label: "Zielgruppen", href: "#personas" },
@@ -12,6 +18,19 @@ const Navbar = () => {
     { label: "Über uns", href: "#about" },
     { label: "FAQ", href: "#faq" },
   ];
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast({ title: "Abgemeldet", description: "Sie wurden erfolgreich abgemeldet." });
+    navigate("/");
+    setOpen(false);
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md border-b border-border">
@@ -25,10 +44,23 @@ const Navbar = () => {
               {l.label}
             </a>
           ))}
-          <Link to="/login" className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors">
-            <LogIn size={16} />
-            Anmelden
-          </Link>
+          {session ? (
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              <LogOut size={16} />
+              Abmelden
+            </button>
+          ) : (
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              <LogIn size={16} />
+              Anmelden
+            </Link>
+          )}
           <a href="#cta" className="inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity">
             Angebot anfragen
           </a>
@@ -44,10 +76,17 @@ const Navbar = () => {
               {l.label}
             </a>
           ))}
-          <Link to="/login" onClick={() => setOpen(false)} className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <LogIn size={16} />
-            Anmelden
-          </Link>
+          {session ? (
+            <button onClick={handleLogout} className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <LogOut size={16} />
+              Abmelden
+            </button>
+          ) : (
+            <Link to="/login" onClick={() => setOpen(false)} className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <LogIn size={16} />
+              Anmelden
+            </Link>
+          )}
           <a href="#cta" onClick={() => setOpen(false)} className="block rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground text-center">
             Angebot anfragen
           </a>

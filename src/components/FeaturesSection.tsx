@@ -45,13 +45,20 @@ const FeaturesSection = () => (
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {features.map((f) => (
-          <div key={f.title} className="group rounded-xl bg-background p-6 border border-border hover:border-accent/40 hover:shadow-lg transition-all">
-            <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors">
-              <f.icon className="h-6 w-6 text-accent" />
+        {features.map((f, i) => (
+          <div
+            key={f.title}
+            className="group relative rounded-2xl bg-background p-7 border border-border hover:border-accent/50 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+            style={{ animationDelay: `${i * 60}ms` }}
+          >
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-accent/0 via-accent/0 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className="relative">
+              <div className="h-12 w-12 rounded-xl bg-accent/10 flex items-center justify-center mb-5 group-hover:bg-accent group-hover:scale-110 transition-all duration-300">
+                <f.icon className="h-6 w-6 text-accent group-hover:text-accent-foreground transition-colors" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">{f.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
             </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">{f.title}</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
           </div>
         ))}
       </div>
