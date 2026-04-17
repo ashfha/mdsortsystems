@@ -1,4 +1,4 @@
-import heroProduct from "@/assets/hero-product.jpg";
+import heroProduct from "@/assets/hero-product.png";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 const highlights = [
@@ -42,10 +42,15 @@ const HeroSection = () => (
             </a>
           </div>
         </div>
-        <div className="relative animate-fade-in flex justify-center">
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-            <img src={heroProduct} alt="MD Sort Systems – modularer Sensoraufsatz auf Glascontainer" width={640} height={480} className="w-full max-w-lg object-cover" />
-          </div>
+        <div className="relative animate-fade-in flex justify-center items-center">
+          <div className="absolute inset-0 -z-10 bg-gradient-to-br from-accent/20 via-primary/10 to-transparent blur-3xl rounded-full" />
+          <img
+            src={heroProduct}
+            alt="MD Sort Systems – modularer Sensoraufsatz auf Glascontainer"
+            width={640}
+            height={480}
+            className="w-full max-w-md md:max-w-lg object-contain drop-shadow-2xl"
+          />
         </div>
       </div>
     </div>
