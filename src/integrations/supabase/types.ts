@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      insertions: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          occurred_at: string
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          occurred_at?: string
+          quantity?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          occurred_at?: string
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insertions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location_stats"
+            referencedColumns: ["location_id"]
+          },
+          {
+            foreignKeyName: "insertions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
           address: string | null
@@ -79,7 +121,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      location_stats: {
+        Row: {
+          event_count: number | null
+          last_insertion_at: string | null
+          location_id: string | null
+          total_inserted: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
