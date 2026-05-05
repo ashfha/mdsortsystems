@@ -45,13 +45,21 @@ const Navbar = () => {
             </a>
           ))}
           {session ? (
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              <LogOut size={16} />
-              Abmelden
-            </button>
+            <>
+              <Link
+                to="/dashboard"
+                className="text-sm font-medium text-foreground hover:text-accent transition-colors"
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <LogOut size={16} />
+                Abmelden
+              </button>
+            </>
           ) : (
             <Link
               to="/login"

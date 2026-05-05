@@ -26,10 +26,10 @@ const Login = () => {
   // Redirect if already signed in
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) navigate("/", { replace: true });
+      if (session) navigate("/dashboard", { replace: true });
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/", { replace: true });
+      if (session) navigate("/dashboard", { replace: true });
     });
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
@@ -56,7 +56,7 @@ const Login = () => {
       return;
     }
     toast({ title: "Willkommen zurück!", description: "Sie sind erfolgreich angemeldet." });
-    navigate("/", { replace: true });
+    navigate("/dashboard", { replace: true });
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -94,6 +94,7 @@ const Login = () => {
       return;
     }
     toast({ title: "Konto erstellt!", description: "Sie sind nun angemeldet." });
+    navigate("/dashboard", { replace: true });
   };
 
   const handleForgot = async (e: React.FormEvent) => {
