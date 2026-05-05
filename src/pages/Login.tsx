@@ -94,6 +94,7 @@ const Login = () => {
       return;
     }
     toast({ title: "Konto erstellt!", description: "Sie sind nun angemeldet." });
+    navigate("/dashboard", { replace: true });
   };
 
   const handleForgot = async (e: React.FormEvent) => {
