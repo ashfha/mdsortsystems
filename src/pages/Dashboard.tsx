@@ -103,7 +103,7 @@ const Dashboard = () => {
     ]);
     if (lErr) toast({ title: "Fehler beim Laden", description: lErr.message, variant: "destructive" });
     const statsMap = new Map<string, StatsRow>();
-    ((stats as StatsRow[]) ?? []).forEach((s) => statsMap.set(s.location_id, s));
+    ((stats as unknown as StatsRow[]) ?? []).forEach((s) => statsMap.set(s.location_id, s));
     const merged: LocationWithStats[] = ((locs as LocationRow[]) ?? []).map((l) => {
       const s = statsMap.get(l.id);
       return {
