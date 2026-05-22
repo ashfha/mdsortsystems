@@ -98,8 +98,10 @@ const Dashboard = () => {
 
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
-  const markersRef = useRef<any[]>([]);
+  const markersRef = useRef<Array<{ id: string; marker: any }>>([]);
   const infoRef = useRef<any>(null);
+  const openInfoLocationId = useRef<string | null>(null);
+
 
   // form
   const [name, setName] = useState("");
