@@ -173,7 +173,7 @@ const Dashboard = () => {
           infoRef.current = new window.google.maps.InfoWindow();
         }
         // Clear old markers
-        markersRef.current.forEach((m) => m.setMap(null));
+        markersRef.current.forEach((m) => m.marker.setMap(null));
         markersRef.current = [];
         locations.forEach((loc) => {
           const marker = new window.google.maps.Marker({
@@ -181,30 +181,24 @@ const Dashboard = () => {
             map: mapInstance.current,
             title: loc.name,
           });
-          const html = `
-            <div style="font-family: inherit; min-width: 180px;">
-              <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(loc.name)}</div>
-              ${loc.address ? `<div style="font-size: 12px; color: #555;">${escapeHtml(loc.address)}</div>` : ""}
-              <div style="margin-top: 6px; font-size: 13px;">
-                Gesamt: <strong>${loc.total_inserted.toLocaleString("de-DE")}</strong><br/>
-                Weißglas: <strong>${loc.white_inserted.toLocaleString("de-DE")}</strong><br/>
-                Buntglas: <strong>${loc.colored_inserted.toLocaleString("de-DE")}</strong>
-              </div>
-            </div>`;
           marker.addListener("mouseover", () => {
             setHovered(loc);
-            infoRef.current.setContent(html);
+            openInfoLocationId.current = loc.id;
+            infoRef.current.setContent(buildInfoHtml(loc));
             infoRef.current.open(mapInstance.current, marker);
           });
           marker.addListener("mouseout", () => {
+            openInfoLocationId.current = null;
             infoRef.current.close();
           });
           marker.addListener("click", () => {
-            infoRef.current.setContent(html);
+            openInfoLocationId.current = loc.id;
+            infoRef.current.setContent(buildInfoHtml(loc));
             infoRef.current.open(mapInstance.current, marker);
           });
-          markersRef.current.push(marker);
+          markersRef.current.push({ id: loc.id, marker });
         });
+
         if (locations.length > 1) {
           const bounds = new window.google.maps.LatLngBounds();
           locations.forEach((l) => bounds.extend({ lat: l.latitude, lng: l.longitude }));
