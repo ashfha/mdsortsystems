@@ -1,4 +1,4 @@
-import heroProduct from "@/assets/hero-product.png";
+import heroProduct from "@/assets/hero-product-new.jpeg";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 const highlights = [

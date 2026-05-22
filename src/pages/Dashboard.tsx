@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, CircleMarker, Tooltip, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import { Loader2, MapPin, Package, Plus, RefreshCw, Radio } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -28,14 +27,61 @@ type LocationRow = {
 type StatsRow = {
   location_id: string;
   total_inserted: number;
+  white_inserted: number;
+  colored_inserted: number;
   event_count: number;
   last_insertion_at: string | null;
 };
 
 type LocationWithStats = LocationRow & {
   total_inserted: number;
+  white_inserted: number;
+  colored_inserted: number;
   event_count: number;
   last_insertion_at: string | null;
+};
+
+const GLASS_CAP = 1000;
+const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+const TRACKING_ID = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as string | undefined;
+
+declare global {
+  interface Window {
+    google?: any;
+    __initMdsMap?: () => void;
+  }
+}
+
+const loadGoogleMaps = (): Promise<void> => {
+  if (typeof window === "undefined") return Promise.reject(new Error("No window"));
+  if (window.google?.maps) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById("gmaps-sdk") as HTMLScriptElement | null;
+    window.__initMdsMap = () => resolve();
+    if (existing) {
+      // Already loading – wait
+      const check = setInterval(() => {
+        if (window.google?.maps) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 100);
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "gmaps-sdk";
+    script.async = true;
+    script.defer = true;
+    const params = new URLSearchParams({
+      key: BROWSER_KEY ?? "",
+      loading: "async",
+      callback: "__initMdsMap",
+    });
+    if (TRACKING_ID) params.set("channel", TRACKING_ID);
+    script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+    script.onerror = () => reject(new Error("Google Maps konnte nicht geladen werden."));
+    document.head.appendChild(script);
+  });
 };
 
 const Dashboard = () => {
@@ -47,6 +93,13 @@ const Dashboard = () => {
   const [companyName, setCompanyName] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [hovered, setHovered] = useState<LocationWithStats | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
+
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstance = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const infoRef = useRef<any>(null);
 
   // form
   const [name, setName] = useState("");
@@ -70,7 +123,7 @@ const Dashboard = () => {
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  // Realtime: refresh stats whenever insertions or locations change
+  // Realtime
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
@@ -91,6 +144,82 @@ const Dashboard = () => {
     };
   }, [userId]);
 
+  // Initialize Google Map
+  useEffect(() => {
+    if (loading) return;
+    if (!mapRef.current) return;
+    if (!BROWSER_KEY) {
+      setMapError("Google Maps API-Key fehlt.");
+      return;
+    }
+    let cancelled = false;
+    loadGoogleMaps()
+      .then(() => {
+        if (cancelled || !mapRef.current || !window.google) return;
+        const center =
+          locations.length > 0
+            ? { lat: locations[0].latitude, lng: locations[0].longitude }
+            : { lat: 51.1657, lng: 10.4515 };
+        if (!mapInstance.current) {
+          mapInstance.current = new window.google.maps.Map(mapRef.current, {
+            center,
+            zoom: locations.length > 1 ? 6 : 12,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+          });
+          infoRef.current = new window.google.maps.InfoWindow();
+        }
+        // Clear old markers
+        markersRef.current.forEach((m) => m.setMap(null));
+        markersRef.current = [];
+        locations.forEach((loc) => {
+          const marker = new window.google.maps.Marker({
+            position: { lat: loc.latitude, lng: loc.longitude },
+            map: mapInstance.current,
+            title: loc.name,
+          });
+          const html = `
+            <div style="font-family: inherit; min-width: 180px;">
+              <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(loc.name)}</div>
+              ${loc.address ? `<div style="font-size: 12px; color: #555;">${escapeHtml(loc.address)}</div>` : ""}
+              <div style="margin-top: 6px; font-size: 13px;">
+                Gesamt: <strong>${loc.total_inserted.toLocaleString("de-DE")}</strong><br/>
+                Weißglas: <strong>${loc.white_inserted.toLocaleString("de-DE")}</strong><br/>
+                Buntglas: <strong>${loc.colored_inserted.toLocaleString("de-DE")}</strong>
+              </div>
+            </div>`;
+          marker.addListener("mouseover", () => {
+            setHovered(loc);
+            infoRef.current.setContent(html);
+            infoRef.current.open(mapInstance.current, marker);
+          });
+          marker.addListener("mouseout", () => {
+            infoRef.current.close();
+          });
+          marker.addListener("click", () => {
+            infoRef.current.setContent(html);
+            infoRef.current.open(mapInstance.current, marker);
+          });
+          markersRef.current.push(marker);
+        });
+        if (locations.length > 1) {
+          const bounds = new window.google.maps.LatLngBounds();
+          locations.forEach((l) => bounds.extend({ lat: l.latitude, lng: l.longitude }));
+          mapInstance.current.fitBounds(bounds);
+        } else if (locations.length === 1) {
+          mapInstance.current.setCenter(center);
+          mapInstance.current.setZoom(12);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setMapError(err.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, locations]);
+
   const loadData = async (uid: string) => {
     setRefreshing(true);
     const [{ data: locs, error: lErr }, { data: stats }, { data: prof }] = await Promise.all([
@@ -109,6 +238,8 @@ const Dashboard = () => {
       return {
         ...l,
         total_inserted: s?.total_inserted ?? 0,
+        white_inserted: s?.white_inserted ?? 0,
+        colored_inserted: s?.colored_inserted ?? 0,
         event_count: s?.event_count ?? 0,
         last_insertion_at: s?.last_insertion_at ?? null,
       };
@@ -132,13 +263,7 @@ const Dashboard = () => {
     if (!user) return;
     const { error } = await supabase
       .from("locations")
-      .insert({
-        user_id: user.id,
-        name,
-        address: address || null,
-        latitude,
-        longitude,
-      });
+      .insert({ user_id: user.id, name, address: address || null, latitude, longitude });
     setSubmitting(false);
     if (error) {
       toast({ title: "Fehler", description: error.message, variant: "destructive" });
@@ -146,15 +271,18 @@ const Dashboard = () => {
     }
     setOpen(false);
     setName(""); setAddress(""); setLat(""); setLng("");
-    toast({ title: "Standort hinzugefügt", description: "Einwurf-Daten werden automatisch synchronisiert." });
+    toast({ title: "Standort hinzugefügt" });
     await loadData(user.id);
   };
 
   const totalSum = locations.reduce((acc, l) => acc + l.total_inserted, 0);
-  const center: [number, number] =
-    locations.length > 0
-      ? [locations[0].latitude, locations[0].longitude]
-      : [51.1657, 10.4515]; // Germany
+  const totalWhite = locations.reduce((acc, l) => acc + l.white_inserted, 0);
+  const totalColored = locations.reduce((acc, l) => acc + l.colored_inserted, 0);
+  const focus = hovered ?? null;
+  const whiteValue = focus ? focus.white_inserted : totalWhite;
+  const coloredValue = focus ? focus.colored_inserted : totalColored;
+  const whitePct = Math.min(100, (whiteValue / GLASS_CAP) * 100);
+  const coloredPct = Math.min(100, (coloredValue / GLASS_CAP) * 100);
 
   return (
     <div className="min-h-screen bg-background">
@@ -172,7 +300,7 @@ const Dashboard = () => {
               {companyName ? `Willkommen, ${companyName}` : "Ihr Dashboard"}
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Einwurfdaten werden automatisch aus der Datenbank geladen und in Echtzeit aktualisiert.
+              Einwurfdaten werden automatisch geladen und in Echtzeit aktualisiert.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -212,9 +340,6 @@ const Dashboard = () => {
                       <Input id="llng" value={lng} onChange={(e) => setLng(e.target.value)} required placeholder="13.4050" />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Die Anzahl der Einwürfe wird automatisch aus den Sensordaten berechnet — keine manuelle Eingabe nötig.
-                  </p>
                   <DialogFooter>
                     <button
                       type="submit"
@@ -231,7 +356,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="rounded-xl border border-border bg-card p-6">
             <div className="flex items-center gap-3 text-muted-foreground text-sm">
               <MapPin size={16} /> Standorte
@@ -254,73 +379,77 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Glass type progress bars */}
+        <div className="rounded-xl border border-border bg-card p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-semibold text-foreground">Auslastung Glascontainer</h2>
+              <p className="text-xs text-muted-foreground">
+                {focus ? `Standort: ${focus.name}` : "Gesamt über alle Standorte"} · 100 % entspricht 1.000 Einwürfen
+              </p>
+            </div>
+          </div>
+          <div className="space-y-5">
+            <div>
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="font-medium text-foreground">Weißglas</span>
+                <span className="text-muted-foreground">
+                  {whiteValue.toLocaleString("de-DE")} / {GLASS_CAP.toLocaleString("de-DE")} ({whitePct.toFixed(0)}%)
+                </span>
+              </div>
+              <Progress value={whitePct} className="h-3 [&>div]:bg-foreground/80" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="font-medium text-foreground">Buntglas</span>
+                <span className="text-muted-foreground">
+                  {coloredValue.toLocaleString("de-DE")} / {GLASS_CAP.toLocaleString("de-DE")} ({coloredPct.toFixed(0)}%)
+                </span>
+              </div>
+              <Progress value={coloredPct} className="h-3 [&>div]:bg-accent" />
+            </div>
+          </div>
+        </div>
+
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <div className="px-6 py-4 border-b border-border">
             <h2 className="font-semibold text-foreground">Karte der Standorte</h2>
-            <p className="text-sm text-muted-foreground">Hover über die Markierungen für die Einwurf-Statistik (live).</p>
+            <p className="text-sm text-muted-foreground">
+              Bewegen Sie die Maus über eine Markierung, um die Einwurfdaten oben zu sehen.
+            </p>
           </div>
           <div className="h-[500px] w-full relative">
             {loading ? (
               <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                 <Loader2 className="animate-spin mr-2" /> Lade Karte…
               </div>
+            ) : mapError ? (
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-destructive p-4 text-center">
+                {mapError}
+              </div>
             ) : (
-              <MapContainer center={center} zoom={locations.length > 1 ? 6 : 12} className="h-full w-full" scrollWheelZoom>
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                {locations.map((loc) => {
-                  const radius = 10 + Math.min(40, Math.sqrt(loc.total_inserted));
-                  return (
-                    <CircleMarker
-                      key={loc.id}
-                      center={[loc.latitude, loc.longitude]}
-                      radius={radius}
-                      pathOptions={{ color: "hsl(var(--primary))", fillColor: "hsl(var(--primary))", fillOpacity: 0.4, weight: 2 }}
-                    >
-                      <Tooltip direction="top" offset={[0, -8]} opacity={1} sticky>
-                        <div className="text-sm">
-                          <div className="font-semibold">{loc.name}</div>
-                          {loc.address && <div className="text-muted-foreground">{loc.address}</div>}
-                          <div className="mt-1">
-                            Eingeworfen: <strong>{loc.total_inserted.toLocaleString("de-DE")}</strong>
-                          </div>
-                          {loc.last_insertion_at && (
-                            <div className="text-xs text-muted-foreground">
-                              Zuletzt: {new Date(loc.last_insertion_at).toLocaleString("de-DE")}
-                            </div>
-                          )}
-                        </div>
-                      </Tooltip>
-                      <Popup>
-                        <div className="text-sm">
-                          <div className="font-semibold">{loc.name}</div>
-                          {loc.address && <div className="text-muted-foreground">{loc.address}</div>}
-                          <div className="mt-1">
-                            Eingeworfen: <strong>{loc.total_inserted.toLocaleString("de-DE")}</strong>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Ereignisse: {loc.event_count.toLocaleString("de-DE")}
-                          </div>
-                        </div>
-                      </Popup>
-                    </CircleMarker>
-                  );
-                })}
-              </MapContainer>
+              <div ref={mapRef} className="h-full w-full" />
             )}
           </div>
         </div>
 
         {locations.length === 0 && !loading && (
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Noch keine Standorte. Fügen Sie Ihren ersten Standort hinzu — Einwurfdaten werden anschließend automatisch synchronisiert.
+            Noch keine Standorte. Fügen Sie Ihren ersten Standort hinzu — Einwurfdaten werden automatisch synchronisiert.
           </p>
         )}
       </main>
     </div>
   );
 };
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 export default Dashboard;

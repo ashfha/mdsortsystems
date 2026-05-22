@@ -17,6 +17,7 @@ export type Database = {
       insertions: {
         Row: {
           created_at: string
+          glass_type: Database["public"]["Enums"]["glass_type"]
           id: string
           location_id: string
           occurred_at: string
@@ -25,6 +26,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          glass_type?: Database["public"]["Enums"]["glass_type"]
           id?: string
           location_id: string
           occurred_at?: string
@@ -33,6 +35,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          glass_type?: Database["public"]["Enums"]["glass_type"]
           id?: string
           location_id?: string
           occurred_at?: string
@@ -40,13 +43,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "insertions_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "location_stats"
-            referencedColumns: ["location_id"]
-          },
           {
             foreignKeyName: "insertions_location_id_fkey"
             columns: ["location_id"]
@@ -123,20 +119,29 @@ export type Database = {
     Views: {
       location_stats: {
         Row: {
+          colored_inserted: number | null
           event_count: number | null
           last_insertion_at: string | null
           location_id: string | null
           total_inserted: number | null
-          user_id: string | null
+          white_inserted: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "insertions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      glass_type: "white" | "colored"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -263,6 +268,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      glass_type: ["white", "colored"],
+    },
   },
 } as const
