@@ -462,4 +462,24 @@ function escapeHtml(s: string) {
     .replace(/'/g, "&#39;");
 }
 
+function buildInfoHtml(loc: {
+  name: string;
+  address: string | null;
+  total_inserted: number;
+  white_inserted: number;
+  colored_inserted: number;
+}) {
+  return `
+    <div style="font-family: inherit; min-width: 180px;">
+      <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(loc.name)}</div>
+      ${loc.address ? `<div style="font-size: 12px; color: #555;">${escapeHtml(loc.address)}</div>` : ""}
+      <div style="margin-top: 6px; font-size: 13px;">
+        Gesamt: <strong>${loc.total_inserted.toLocaleString("de-DE")}</strong><br/>
+        Weißglas: <strong>${loc.white_inserted.toLocaleString("de-DE")}</strong><br/>
+        Buntglas: <strong>${loc.colored_inserted.toLocaleString("de-DE")}</strong>
+      </div>
+    </div>`;
+}
+
+
 export default Dashboard;
