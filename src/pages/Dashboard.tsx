@@ -216,6 +216,20 @@ const Dashboard = () => {
     };
   }, [loading, locations]);
 
+  // Keep hovered state and any open InfoWindow in sync with realtime data
+  useEffect(() => {
+    if (hovered) {
+      const fresh = locations.find((l) => l.id === hovered.id);
+      if (fresh && fresh !== hovered) setHovered(fresh);
+      else if (!fresh) setHovered(null);
+    }
+    if (openInfoLocationId.current && infoRef.current) {
+      const fresh = locations.find((l) => l.id === openInfoLocationId.current);
+      if (fresh) infoRef.current.setContent(buildInfoHtml(fresh));
+    }
+  }, [locations]);
+
+
   const loadData = async (uid: string) => {
     setRefreshing(true);
     const [{ data: locs, error: lErr }, { data: stats }, { data: prof }] = await Promise.all([
