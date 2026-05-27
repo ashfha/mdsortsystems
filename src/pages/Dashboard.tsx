@@ -199,10 +199,14 @@ const Dashboard = () => {
         markersRef.current.forEach((m) => m.marker.setMap(null));
         markersRef.current = [];
         locations.forEach((loc) => {
+          const full = isFull(loc);
           const marker = new window.google.maps.Marker({
             position: { lat: loc.latitude, lng: loc.longitude },
             map: mapInstance.current,
             title: loc.name,
+            icon: full
+              ? "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+              : "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
           });
           marker.addListener("mouseover", () => {
             setHovered(loc);
@@ -211,8 +215,12 @@ const Dashboard = () => {
             infoRef.current.open(mapInstance.current, marker);
           });
           marker.addListener("mouseout", () => {
-            openInfoLocationId.current = null;
-            infoRef.current.close();
+            // keep open on hover-out only if user clicked; close otherwise
+            if (openInfoLocationId.current === loc.id) {
+              // keep open
+            } else {
+              infoRef.current.close();
+            }
           });
           marker.addListener("click", () => {
             openInfoLocationId.current = loc.id;
