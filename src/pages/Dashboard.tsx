@@ -42,8 +42,31 @@ type LocationWithStats = LocationRow & {
 };
 
 const GLASS_CAP = 1000;
+const FULL_THRESHOLD = 700;
 const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
 const TRACKING_ID = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as string | undefined;
+
+const isFull = (l: { white_inserted: number; colored_inserted: number }) =>
+  l.white_inserted >= FULL_THRESHOLD || l.colored_inserted >= FULL_THRESHOLD;
+
+const routeUrlSingle = (l: { latitude: number; longitude: number }) =>
+  `https://www.google.com/maps/dir/?api=1&destination=${l.latitude},${l.longitude}`;
+
+const routeUrlMulti = (list: Array<{ latitude: number; longitude: number }>) => {
+  if (list.length === 0) return "";
+  const dest = list[list.length - 1];
+  const waypoints = list
+    .slice(0, -1)
+    .map((l) => `${l.latitude},${l.longitude}`)
+    .join("|");
+  const params = new URLSearchParams({
+    api: "1",
+    travelmode: "driving",
+    destination: `${dest.latitude},${dest.longitude}`,
+  });
+  if (waypoints) params.set("waypoints", waypoints);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+};
 
 declare global {
   interface Window {
