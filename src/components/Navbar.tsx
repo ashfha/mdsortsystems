@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "@/assets/logo.png";
-import { Menu, X, LogIn, LogOut } from "lucide-react";
+import { Menu, X, LogIn, LogOut, Sun, Moon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
+import { useTheme } from "next-themes";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   const links = [
     { label: "Produkt", href: "#features" },
@@ -30,6 +32,10 @@ const Navbar = () => {
     toast({ title: "Abgemeldet", description: "Sie wurden erfolgreich abgemeldet." });
     navigate("/");
     setOpen(false);
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
   };
 
   return (
@@ -72,10 +78,28 @@ const Navbar = () => {
           <a href="#cta" className="inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity">
             Angebot anfragen
           </a>
+
+          {/* Dark Mode Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-muted transition-colors text-foreground"
+            aria-label="Dark Mode umschalten"
+          >
+            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
         </div>
-        <button onClick={() => setOpen(!open)} className="md:hidden text-foreground">
-          {open ? <X size={24} /> : <Menu size={24} />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-muted transition-colors text-foreground"
+            aria-label="Dark Mode umschalten"
+          >
+            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <button onClick={() => setOpen(!open)} className="text-foreground">
+            {open ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
       </div>
       {open && (
         <div className="md:hidden bg-background border-b border-border px-4 pb-4 space-y-3">
