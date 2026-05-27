@@ -397,6 +397,39 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {(() => {
+          const fullLocs = locations.filter(isFull);
+          if (fullLocs.length === 0) return null;
+          const canMulti = fullLocs.length >= 5;
+          // Google Maps supports up to ~10 waypoints; cap to 10 to be safe
+          const tour = fullLocs.slice(0, 10);
+          return (
+            <div className="mb-6 rounded-xl border border-destructive/40 bg-destructive/5 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-destructive">
+                  {fullLocs.length} Standort{fullLocs.length === 1 ? "" : "e"} über {FULL_THRESHOLD} Einwürfen
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {canMulti
+                    ? "Sammeltour kann direkt in Google Maps geöffnet werden."
+                    : `Ab 5 vollen Standorten kann eine Sammeltour generiert werden (aktuell ${fullLocs.length}).`}
+                </p>
+              </div>
+              {canMulti && (
+                <a
+                  href={routeUrlMulti(tour)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground hover:opacity-90"
+                >
+                  Sammeltour in Google Maps öffnen
+                </a>
+              )}
+            </div>
+          );
+        })()}
+
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="rounded-xl border border-border bg-card p-6">
             <div className="flex items-center gap-3 text-muted-foreground text-sm">
