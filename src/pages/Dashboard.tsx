@@ -496,19 +496,43 @@ function escapeHtml(s: string) {
 function buildInfoHtml(loc: {
   name: string;
   address: string | null;
+  latitude: number;
+  longitude: number;
   total_inserted: number;
   white_inserted: number;
   colored_inserted: number;
 }) {
+  const whitePct = Math.min(100, (loc.white_inserted / GLASS_CAP) * 100);
+  const coloredPct = Math.min(100, (loc.colored_inserted / GLASS_CAP) * 100);
+  const full = isFull(loc);
+  const bar = (pct: number, color: string) => `
+    <div style="background:#eee;border-radius:4px;height:6px;overflow:hidden;margin-top:2px;">
+      <div style="width:${pct}%;height:100%;background:${color};"></div>
+    </div>`;
+  const route = routeUrlSingle(loc);
   return `
-    <div style="font-family: inherit; min-width: 180px;">
-      <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(loc.name)}</div>
-      ${loc.address ? `<div style="font-size: 12px; color: #555;">${escapeHtml(loc.address)}</div>` : ""}
-      <div style="margin-top: 6px; font-size: 13px;">
-        Gesamt: <strong>${loc.total_inserted.toLocaleString("de-DE")}</strong><br/>
-        Weißglas: <strong>${loc.white_inserted.toLocaleString("de-DE")}</strong><br/>
-        Buntglas: <strong>${loc.colored_inserted.toLocaleString("de-DE")}</strong>
+    <div style="font-family: inherit; min-width: 220px;">
+      <div style="font-weight: 600; margin-bottom: 4px; ${full ? "color:#c0392b;" : ""}">
+        ${escapeHtml(loc.name)} ${full ? "· VOLL" : ""}
       </div>
+      ${loc.address ? `<div style="font-size: 12px; color: #555;">${escapeHtml(loc.address)}</div>` : ""}
+      <div style="margin-top: 8px; font-size: 12px;">
+        <div style="display:flex;justify-content:space-between;">
+          <span>Weißglas</span>
+          <span>${loc.white_inserted.toLocaleString("de-DE")} / ${GLASS_CAP}</span>
+        </div>
+        ${bar(whitePct, loc.white_inserted >= FULL_THRESHOLD ? "#c0392b" : "#333")}
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span>Buntglas</span>
+          <span>${loc.colored_inserted.toLocaleString("de-DE")} / ${GLASS_CAP}</span>
+        </div>
+        ${bar(coloredPct, loc.colored_inserted >= FULL_THRESHOLD ? "#c0392b" : "#2ecc71")}
+      </div>
+      ${
+        full
+          ? `<a href="${route}" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;padding:6px 10px;background:#c0392b;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">Route generieren</a>`
+          : `<a href="${route}" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;padding:6px 10px;background:#111;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">Route generieren</a>`
+      }
     </div>`;
 }
 
