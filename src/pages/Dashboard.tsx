@@ -42,8 +42,31 @@ type LocationWithStats = LocationRow & {
 };
 
 const GLASS_CAP = 1000;
+const FULL_THRESHOLD = 700;
 const BROWSER_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
 const TRACKING_ID = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as string | undefined;
+
+const isFull = (l: { white_inserted: number; colored_inserted: number }) =>
+  l.white_inserted >= FULL_THRESHOLD || l.colored_inserted >= FULL_THRESHOLD;
+
+const routeUrlSingle = (l: { latitude: number; longitude: number }) =>
+  `https://www.google.com/maps/dir/?api=1&destination=${l.latitude},${l.longitude}`;
+
+const routeUrlMulti = (list: Array<{ latitude: number; longitude: number }>) => {
+  if (list.length === 0) return "";
+  const dest = list[list.length - 1];
+  const waypoints = list
+    .slice(0, -1)
+    .map((l) => `${l.latitude},${l.longitude}`)
+    .join("|");
+  const params = new URLSearchParams({
+    api: "1",
+    travelmode: "driving",
+    destination: `${dest.latitude},${dest.longitude}`,
+  });
+  if (waypoints) params.set("waypoints", waypoints);
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+};
 
 declare global {
   interface Window {
@@ -176,10 +199,14 @@ const Dashboard = () => {
         markersRef.current.forEach((m) => m.marker.setMap(null));
         markersRef.current = [];
         locations.forEach((loc) => {
+          const full = isFull(loc);
           const marker = new window.google.maps.Marker({
             position: { lat: loc.latitude, lng: loc.longitude },
             map: mapInstance.current,
             title: loc.name,
+            icon: full
+              ? "https://maps.google.com/mapfiles/ms/icons/red-dot.png"
+              : "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
           });
           marker.addListener("mouseover", () => {
             setHovered(loc);
@@ -188,8 +215,12 @@ const Dashboard = () => {
             infoRef.current.open(mapInstance.current, marker);
           });
           marker.addListener("mouseout", () => {
-            openInfoLocationId.current = null;
-            infoRef.current.close();
+            // keep open on hover-out only if user clicked; close otherwise
+            if (openInfoLocationId.current === loc.id) {
+              // keep open
+            } else {
+              infoRef.current.close();
+            }
           });
           marker.addListener("click", () => {
             openInfoLocationId.current = loc.id;
@@ -366,6 +397,39 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {(() => {
+          const fullLocs = locations.filter(isFull);
+          if (fullLocs.length === 0) return null;
+          const canMulti = fullLocs.length >= 5;
+          // Google Maps supports up to ~10 waypoints; cap to 10 to be safe
+          const tour = fullLocs.slice(0, 10);
+          return (
+            <div className="mb-6 rounded-xl border border-destructive/40 bg-destructive/5 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-destructive">
+                  {fullLocs.length} Standort{fullLocs.length === 1 ? "" : "e"} über {FULL_THRESHOLD} Einwürfen
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {canMulti
+                    ? "Sammeltour kann direkt in Google Maps geöffnet werden."
+                    : `Ab 5 vollen Standorten kann eine Sammeltour generiert werden (aktuell ${fullLocs.length}).`}
+                </p>
+              </div>
+              {canMulti && (
+                <a
+                  href={routeUrlMulti(tour)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground hover:opacity-90"
+                >
+                  Sammeltour in Google Maps öffnen
+                </a>
+              )}
+            </div>
+          );
+        })()}
+
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="rounded-xl border border-border bg-card p-6">
             <div className="flex items-center gap-3 text-muted-foreground text-sm">
@@ -465,19 +529,43 @@ function escapeHtml(s: string) {
 function buildInfoHtml(loc: {
   name: string;
   address: string | null;
+  latitude: number;
+  longitude: number;
   total_inserted: number;
   white_inserted: number;
   colored_inserted: number;
 }) {
+  const whitePct = Math.min(100, (loc.white_inserted / GLASS_CAP) * 100);
+  const coloredPct = Math.min(100, (loc.colored_inserted / GLASS_CAP) * 100);
+  const full = isFull(loc);
+  const bar = (pct: number, color: string) => `
+    <div style="background:#eee;border-radius:4px;height:6px;overflow:hidden;margin-top:2px;">
+      <div style="width:${pct}%;height:100%;background:${color};"></div>
+    </div>`;
+  const route = routeUrlSingle(loc);
   return `
-    <div style="font-family: inherit; min-width: 180px;">
-      <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(loc.name)}</div>
-      ${loc.address ? `<div style="font-size: 12px; color: #555;">${escapeHtml(loc.address)}</div>` : ""}
-      <div style="margin-top: 6px; font-size: 13px;">
-        Gesamt: <strong>${loc.total_inserted.toLocaleString("de-DE")}</strong><br/>
-        Weißglas: <strong>${loc.white_inserted.toLocaleString("de-DE")}</strong><br/>
-        Buntglas: <strong>${loc.colored_inserted.toLocaleString("de-DE")}</strong>
+    <div style="font-family: inherit; min-width: 220px;">
+      <div style="font-weight: 600; margin-bottom: 4px; ${full ? "color:#c0392b;" : ""}">
+        ${escapeHtml(loc.name)} ${full ? "· VOLL" : ""}
       </div>
+      ${loc.address ? `<div style="font-size: 12px; color: #555;">${escapeHtml(loc.address)}</div>` : ""}
+      <div style="margin-top: 8px; font-size: 12px;">
+        <div style="display:flex;justify-content:space-between;">
+          <span>Weißglas</span>
+          <span>${loc.white_inserted.toLocaleString("de-DE")} / ${GLASS_CAP}</span>
+        </div>
+        ${bar(whitePct, loc.white_inserted >= FULL_THRESHOLD ? "#c0392b" : "#333")}
+        <div style="display:flex;justify-content:space-between;margin-top:6px;">
+          <span>Buntglas</span>
+          <span>${loc.colored_inserted.toLocaleString("de-DE")} / ${GLASS_CAP}</span>
+        </div>
+        ${bar(coloredPct, loc.colored_inserted >= FULL_THRESHOLD ? "#c0392b" : "#2ecc71")}
+      </div>
+      ${
+        full
+          ? `<a href="${route}" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;padding:6px 10px;background:#c0392b;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">Route generieren</a>`
+          : `<a href="${route}" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;padding:6px 10px;background:#111;color:#fff;border-radius:6px;text-decoration:none;font-size:12px;font-weight:600;">Route generieren</a>`
+      }
     </div>`;
 }
 
