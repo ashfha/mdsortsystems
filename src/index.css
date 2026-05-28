@@ -52,33 +52,47 @@
   }
 
   .dark {
-    --background: 213 32% 8%;
-    --foreground: 210 40% 96%;
-    --card: 213 32% 12%;
-    --card-foreground: 210 40% 96%;
-    --popover: 213 32% 12%;
-    --popover-foreground: 210 40% 96%;
-    --primary: 153 40% 45%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 213 40% 30%;
-    --secondary-foreground: 210 40% 96%;
-    --muted: 213 25% 18%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 153 40% 45%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
+    --background: 215 35% 7%;
+    --foreground: 190 35% 96%;
+
+    --card: 214 30% 11%;
+    --card-foreground: 190 35% 96%;
+
+    --popover: 214 30% 10%;
+    --popover-foreground: 190 35% 96%;
+
+    --primary: 178 56% 48%;
+    --primary-foreground: 212 40% 8%;
+
+    --secondary: 153 44% 42%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 214 24% 16%;
+    --muted-foreground: 194 16% 70%;
+
+    --accent: 153 64% 52%;
+    --accent-foreground: 213 32% 10%;
+
+    --destructive: 0 72% 56%;
     --destructive-foreground: 210 40% 98%;
-    --border: 213 25% 20%;
-    --input: 213 25% 20%;
-    --ring: 153 40% 45%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --border: 192 22% 22%;
+    --input: 192 22% 22%;
+    --ring: 153 64% 52%;
+
+    --sidebar-background: 214 30% 10%;
+    --sidebar-foreground: 190 35% 96%;
+    --sidebar-primary: 153 64% 52%;
+    --sidebar-primary-foreground: 213 32% 10%;
+    --sidebar-accent: 214 24% 16%;
+    --sidebar-accent-foreground: 190 35% 96%;
+    --sidebar-border: 192 22% 22%;
+    --sidebar-ring: 153 64% 52%;
+
+    --glass-white: 190 35% 96%;
+    --glass-green: 153 64% 52%;
+    --glass-brown: 30 48% 56%;
+    --eco-gradient: linear-gradient(135deg, hsl(178 56% 48%), hsl(153 64% 52%));
   }
 }
 
@@ -88,6 +102,10 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+    background-image:
+      radial-gradient(circle at top left, hsl(var(--accent) / 0.12), transparent 28rem),
+      radial-gradient(circle at bottom right, hsl(var(--primary) / 0.10), transparent 30rem);
+    background-attachment: fixed;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', sans-serif;
