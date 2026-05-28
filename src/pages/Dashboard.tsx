@@ -295,28 +295,48 @@ const Dashboard = () => {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const latitude = parseFloat(lat);
-    const longitude = parseFloat(lng);
-    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      toast({ title: "Ungültige Koordinaten", variant: "destructive" });
+    const fullAddress = `${street.trim()} ${houseNumber.trim()}, ${zip.trim()} ${city.trim()}`.trim();
+    if (!street.trim() || !houseNumber.trim() || !zip.trim() || !city.trim()) {
+      toast({ title: "Bitte vollständige Adresse angeben", variant: "destructive" });
       return;
     }
+    setGeocoding(true);
     setSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { error } = await supabase
-      .from("locations")
-      .insert({ user_id: user.id, name, address: address || null, latitude, longitude });
-    setSubmitting(false);
-    if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
-      return;
+    try {
+      const { data: geo, error: geoErr } = await supabase.functions.invoke("geocode-address", {
+        body: { address: fullAddress },
+      });
+      if (geoErr || !geo || geo.error) {
+        toast({
+          title: "Adresse nicht gefunden",
+          description: geo?.error ?? geoErr?.message ?? "Bitte Eingabe prüfen.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from("locations").insert({
+        user_id: user.id,
+        name,
+        address: geo.formatted_address,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+      });
+      if (error) {
+        toast({ title: "Fehler", description: error.message, variant: "destructive" });
+        return;
+      }
+      setOpen(false);
+      setName(""); setStreet(""); setHouseNumber(""); setZip(""); setCity("");
+      toast({ title: "Standort hinzugefügt", description: geo.formatted_address });
+      await loadData(user.id);
+    } finally {
+      setGeocoding(false);
+      setSubmitting(false);
     }
-    setOpen(false);
-    setName(""); setAddress(""); setLat(""); setLng("");
-    toast({ title: "Standort hinzugefügt" });
-    await loadData(user.id);
   };
+
 
   const totalSum = locations.reduce((acc, l) => acc + l.total_inserted, 0);
   const totalWhite = locations.reduce((acc, l) => acc + l.white_inserted, 0);
