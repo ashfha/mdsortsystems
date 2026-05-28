@@ -21,13 +21,13 @@ const ImpactSection = () => (
       <div className="grid lg:grid-cols-2 gap-12 items-center mb-12">
         <div className="grid grid-cols-2 gap-4">
           {stats.map((s) => (
-            <div key={s.label} className="text-center rounded-xl bg-card border border-border p-6">
+            <div key={s.label} className="text-center rounded-xl bg-card/85 border border-border/80 p-6 shadow-sm shadow-primary/5 backdrop-blur transition-all hover:-translate-y-1 hover:border-accent/40">
               <div className="text-3xl md:text-4xl font-extrabold text-accent mb-2">{s.value}</div>
               <p className="text-xs text-muted-foreground leading-relaxed">{s.label}</p>
             </div>
           ))}
         </div>
-        <div className="rounded-2xl overflow-hidden shadow-lg border border-border">
+        <div className="rounded-2xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/80">
           <img src={recyclingFacility} alt="Sortierte Glasflaschen in einer Recyclinganlage" loading="lazy" width={1024} height={680} className="w-full object-cover" />
         </div>
       </div>

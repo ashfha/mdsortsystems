@@ -34,7 +34,8 @@ const features = [
 ];
 
 const FeaturesSection = () => (
-  <section id="features" className="py-20 md:py-28 bg-card">
+  <section id="features" className="relative overflow-hidden py-20 md:py-28 bg-card/80">
+    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
     <div className="container mx-auto px-4">
       <div className="text-center max-w-2xl mx-auto mb-16">
         <span className="text-sm font-semibold text-accent uppercase tracking-wider">Leistungen & Vorteile</span>
@@ -48,10 +49,10 @@ const FeaturesSection = () => (
         {features.map((f, i) => (
           <div
             key={f.title}
-            className="group relative rounded-2xl bg-background p-7 border border-border hover:border-accent/50 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+            className="group relative rounded-2xl bg-background/75 p-7 border border-border/80 shadow-sm shadow-primary/5 backdrop-blur hover:border-accent/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-accent/10 transition-all duration-300"
             style={{ animationDelay: `${i * 60}ms` }}
           >
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-accent/0 via-accent/0 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-accent/0 via-accent/0 to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
             <div className="relative">
               <div className="h-12 w-12 rounded-xl bg-accent/10 flex items-center justify-center mb-5 group-hover:bg-accent group-hover:scale-110 transition-all duration-300">
                 <f.icon className="h-6 w-6 text-accent group-hover:text-accent-foreground transition-colors" />
