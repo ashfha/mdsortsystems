@@ -326,9 +326,10 @@ const Dashboard = () => {
   const coloredPct = Math.min(100, (coloredValue / GLASS_CAP) * 100);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background aurora">
       <Navbar />
-      <main className="container mx-auto px-4 pt-24 pb-16">
+      <main className="container mx-auto px-4 pt-24 pb-16 relative">
+
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
           <div>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
