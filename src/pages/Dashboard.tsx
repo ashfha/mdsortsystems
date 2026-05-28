@@ -326,9 +326,10 @@ const Dashboard = () => {
   const coloredPct = Math.min(100, (coloredValue / GLASS_CAP) * 100);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background aurora">
       <Navbar />
-      <main className="container mx-auto px-4 pt-24 pb-16">
+      <main className="container mx-auto px-4 pt-24 pb-16 relative">
+
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
           <div>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -544,12 +545,12 @@ function buildInfoHtml(loc: {
     </div>`;
   const route = routeUrlSingle(loc);
   return `
-    <div style="font-family: inherit; min-width: 220px;">
-      <div style="font-weight: 600; margin-bottom: 4px; ${full ? "color:#c0392b;" : ""}">
+    <div style="font-family: inherit; min-width: 220px; color:#1a1a1a;">
+      <div style="font-weight: 600; margin-bottom: 4px; color:${full ? "#c0392b" : "#1a1a1a"};">
         ${escapeHtml(loc.name)} ${full ? "· VOLL" : ""}
       </div>
       ${loc.address ? `<div style="font-size: 12px; color: #555;">${escapeHtml(loc.address)}</div>` : ""}
-      <div style="margin-top: 8px; font-size: 12px;">
+      <div style="margin-top: 8px; font-size: 12px; color:#1a1a1a;">
         <div style="display:flex;justify-content:space-between;">
           <span>Weißglas</span>
           <span>${loc.white_inserted.toLocaleString("de-DE")} / ${GLASS_CAP}</span>
@@ -568,6 +569,7 @@ function buildInfoHtml(loc: {
       }
     </div>`;
 }
+
 
 
 export default Dashboard;
