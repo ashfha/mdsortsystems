@@ -1,8 +1,9 @@
 import { ArrowRight, Mail, Phone } from "lucide-react";
 
 const CtaSection = () => (
-  <section id="cta" className="py-20 md:py-28 bg-primary">
-    <div className="container mx-auto px-4 text-center">
+  <section id="cta" className="relative overflow-hidden py-20 md:py-28 bg-primary">
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--accent)/0.35),transparent_24rem)]" />
+    <div className="container relative mx-auto px-4 text-center">
       <h2 className="text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
         Bereit für intelligentes Glasrecycling?
       </h2>
@@ -12,7 +13,7 @@ const CtaSection = () => (
       <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
         <a
           href="mailto:info@mdsort.systems"
-          className="inline-flex items-center gap-2 rounded-lg bg-accent px-10 py-4 text-base font-semibold text-accent-foreground hover:opacity-90 transition-opacity"
+          className="inline-flex items-center gap-2 rounded-lg bg-accent px-10 py-4 text-base font-semibold text-accent-foreground shadow-lg shadow-accent/20 hover:-translate-y-0.5 hover:opacity-90 transition-all"
         >
           Jetzt Angebot anfragen
           <ArrowRight size={18} />
