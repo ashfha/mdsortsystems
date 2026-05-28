@@ -128,9 +128,11 @@ const Dashboard = () => {
 
   // form
   const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
-  const [lat, setLat] = useState("");
-  const [lng, setLng] = useState("");
+  const [street, setStreet] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [zip, setZip] = useState("");
+  const [city, setCity] = useState("");
+  const [geocoding, setGeocoding] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -293,28 +295,48 @@ const Dashboard = () => {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const latitude = parseFloat(lat);
-    const longitude = parseFloat(lng);
-    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      toast({ title: "Ungültige Koordinaten", variant: "destructive" });
+    const fullAddress = `${street.trim()} ${houseNumber.trim()}, ${zip.trim()} ${city.trim()}`.trim();
+    if (!street.trim() || !houseNumber.trim() || !zip.trim() || !city.trim()) {
+      toast({ title: "Bitte vollständige Adresse angeben", variant: "destructive" });
       return;
     }
+    setGeocoding(true);
     setSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { error } = await supabase
-      .from("locations")
-      .insert({ user_id: user.id, name, address: address || null, latitude, longitude });
-    setSubmitting(false);
-    if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
-      return;
+    try {
+      const { data: geo, error: geoErr } = await supabase.functions.invoke("geocode-address", {
+        body: { address: fullAddress },
+      });
+      if (geoErr || !geo || geo.error) {
+        toast({
+          title: "Adresse nicht gefunden",
+          description: geo?.error ?? geoErr?.message ?? "Bitte Eingabe prüfen.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from("locations").insert({
+        user_id: user.id,
+        name,
+        address: geo.formatted_address,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+      });
+      if (error) {
+        toast({ title: "Fehler", description: error.message, variant: "destructive" });
+        return;
+      }
+      setOpen(false);
+      setName(""); setStreet(""); setHouseNumber(""); setZip(""); setCity("");
+      toast({ title: "Standort hinzugefügt", description: geo.formatted_address });
+      await loadData(user.id);
+    } finally {
+      setGeocoding(false);
+      setSubmitting(false);
     }
-    setOpen(false);
-    setName(""); setAddress(""); setLat(""); setLng("");
-    toast({ title: "Standort hinzugefügt" });
-    await loadData(user.id);
   };
+
 
   const totalSum = locations.reduce((acc, l) => acc + l.total_inserted, 0);
   const totalWhite = locations.reduce((acc, l) => acc + l.white_inserted, 0);
@@ -368,28 +390,38 @@ const Dashboard = () => {
                     <Label htmlFor="lname">Name</Label>
                     <Input id="lname" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Sortier-Anlage Nord" />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="laddr">Adresse (optional)</Label>
-                    <Input id="laddr" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Hauptstraße 1, Berlin" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="llat">Latitude</Label>
-                      <Input id="llat" value={lat} onChange={(e) => setLat(e.target.value)} required placeholder="52.5200" />
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="lstreet">Straße</Label>
+                      <Input id="lstreet" value={street} onChange={(e) => setStreet(e.target.value)} required placeholder="Hauptstraße" />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="llng">Longitude</Label>
-                      <Input id="llng" value={lng} onChange={(e) => setLng(e.target.value)} required placeholder="13.4050" />
+                      <Label htmlFor="lhnr">Hausnr.</Label>
+                      <Input id="lhnr" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} required placeholder="12a" />
                     </div>
                   </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="lzip">PLZ</Label>
+                      <Input id="lzip" value={zip} onChange={(e) => setZip(e.target.value)} required placeholder="10115" />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="lcity">Stadt</Label>
+                      <Input id="lcity" value={city} onChange={(e) => setCity(e.target.value)} required placeholder="Berlin" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Die Koordinaten werden automatisch aus der Adresse ermittelt.
+                  </p>
                   <DialogFooter>
                     <button
                       type="submit"
                       disabled={submitting}
                       className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
                     >
-                      {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                      Hinzufügen
+                      {(submitting || geocoding) && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {geocoding ? "Adresse prüfen…" : "Hinzufügen"}
+
                     </button>
                   </DialogFooter>
                 </form>
