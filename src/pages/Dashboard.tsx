@@ -112,8 +112,6 @@ const Dashboard = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [locations, setLocations] = useState<LocationWithStats[]>([]);
   const [companyName, setCompanyName] = useState<string>("");
-  const [open, setOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [hovered, setHovered] = useState<LocationWithStats | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
 
@@ -122,15 +120,6 @@ const Dashboard = () => {
   const markersRef = useRef<Array<{ id: string; marker: any }>>([]);
   const infoRef = useRef<any>(null);
   const openInfoLocationId = useRef<string | null>(null);
-
-
-  // form
-  const [name, setName] = useState("");
-  const [street, setStreet] = useState("");
-  const [houseNumber, setHouseNumber] = useState("");
-  const [zip, setZip] = useState("");
-  const [city, setCity] = useState("");
-  const [geocoding, setGeocoding] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
