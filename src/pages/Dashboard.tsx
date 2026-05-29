@@ -122,6 +122,14 @@ const Dashboard = () => {
   const [companyName, setCompanyName] = useState<string>("");
   const [hovered, setHovered] = useState<LocationWithStats | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+  const [name, setName] = useState("");
+  const [street, setStreet] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [zip, setZip] = useState("");
+  const [city, setCity] = useState("");
 
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
