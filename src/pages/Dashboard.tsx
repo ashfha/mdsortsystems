@@ -1,20 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  externalSupabase,
+  normalizeStandort,
+  isWhiteMaterial,
+  isColoredMaterial,
+  type StandortRow,
+  type EinwurfRow,
+} from "@/integrations/external/client";
 import { toast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
-import { Loader2, MapPin, Package, Plus, RefreshCw, Radio } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Loader2, MapPin, Package, RefreshCw, Radio } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
 
 type LocationRow = {
   id: string;
@@ -114,8 +112,6 @@ const Dashboard = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [locations, setLocations] = useState<LocationWithStats[]>([]);
   const [companyName, setCompanyName] = useState<string>("");
-  const [open, setOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [hovered, setHovered] = useState<LocationWithStats | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
 
@@ -124,15 +120,6 @@ const Dashboard = () => {
   const markersRef = useRef<Array<{ id: string; marker: any }>>([]);
   const infoRef = useRef<any>(null);
   const openInfoLocationId = useRef<string | null>(null);
-
-
-  // form
-  const [name, setName] = useState("");
-  const [street, setStreet] = useState("");
-  const [houseNumber, setHouseNumber] = useState("");
-  const [zip, setZip] = useState("");
-  const [city, setCity] = useState("");
-  const [geocoding, setGeocoding] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
@@ -150,24 +137,24 @@ const Dashboard = () => {
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  // Realtime
+  // Realtime — externe DB (standorte + einwuerfe)
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel("dashboard-live")
+    const channel = externalSupabase
+      .channel("dashboard-live-external")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "insertions", filter: `user_id=eq.${userId}` },
+        { event: "*", schema: "public", table: "einwuerfe" },
         () => loadData(userId)
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "locations", filter: `user_id=eq.${userId}` },
+        { event: "*", schema: "public", table: "standorte" },
         () => loadData(userId)
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      externalSupabase.removeChannel(channel);
     };
   }, [userId]);
 
@@ -265,76 +252,59 @@ const Dashboard = () => {
 
   const loadData = async (uid: string) => {
     setRefreshing(true);
-    const [{ data: locs, error: lErr }, { data: stats }, { data: prof }] = await Promise.all([
-      supabase
-        .from("locations")
-        .select("id,name,address,latitude,longitude")
-        .order("created_at", { ascending: false }),
-      supabase.from("location_stats" as any).select("*"),
+    const [
+      { data: standorte, error: sErr },
+      { data: einwuerfe, error: eErr },
+      { data: prof },
+    ] = await Promise.all([
+      externalSupabase.from("standorte").select("*"),
+      externalSupabase.from("einwuerfe").select("id,standort_id,material,anzahl,timestamp,created_at"),
       supabase.from("profiles").select("company_name").eq("user_id", uid).maybeSingle(),
     ]);
-    if (lErr) toast({ title: "Fehler beim Laden", description: lErr.message, variant: "destructive" });
-    const statsMap = new Map<string, StatsRow>();
-    ((stats as unknown as StatsRow[]) ?? []).forEach((s) => statsMap.set(s.location_id, s));
-    const merged: LocationWithStats[] = ((locs as LocationRow[]) ?? []).map((l) => {
-      const s = statsMap.get(l.id);
-      return {
-        ...l,
-        total_inserted: s?.total_inserted ?? 0,
-        white_inserted: s?.white_inserted ?? 0,
-        colored_inserted: s?.colored_inserted ?? 0,
-        event_count: s?.event_count ?? 0,
-        last_insertion_at: s?.last_insertion_at ?? null,
-      };
+    if (sErr) {
+      toast({ title: "Fehler beim Laden der Standorte", description: sErr.message, variant: "destructive" });
+    }
+    if (eErr) {
+      toast({ title: "Fehler beim Laden der Einwürfe", description: eErr.message, variant: "destructive" });
+    }
+
+    // Aggregate einwuerfe per standort
+    const agg = new Map<
+      string,
+      { white: number; colored: number; total: number; count: number; last: string | null }
+    >();
+    ((einwuerfe as EinwurfRow[]) ?? []).forEach((e) => {
+      if (!e.standort_id) return;
+      const cur = agg.get(e.standort_id) ?? { white: 0, colored: 0, total: 0, count: 0, last: null };
+      const qty = Number(e.anzahl ?? 0);
+      cur.total += qty;
+      cur.count += 1;
+      if (isWhiteMaterial(e.material)) cur.white += qty;
+      else if (isColoredMaterial(e.material)) cur.colored += qty;
+      const ts = e.timestamp ?? e.created_at;
+      if (ts && (!cur.last || ts > cur.last)) cur.last = ts;
+      agg.set(e.standort_id, cur);
     });
+
+    const merged: LocationWithStats[] = ((standorte as StandortRow[]) ?? [])
+      .map(normalizeStandort)
+      .filter((l) => Number.isFinite(l.latitude) && Number.isFinite(l.longitude))
+      .map((l) => {
+        const a = agg.get(l.id);
+        return {
+          ...l,
+          total_inserted: a?.total ?? 0,
+          white_inserted: a?.white ?? 0,
+          colored_inserted: a?.colored ?? 0,
+          event_count: a?.count ?? 0,
+          last_insertion_at: a?.last ?? null,
+        };
+      });
+
     setLocations(merged);
     setCompanyName(prof?.company_name ?? "");
     setLoading(false);
     setRefreshing(false);
-  };
-
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const fullAddress = `${street.trim()} ${houseNumber.trim()}, ${zip.trim()} ${city.trim()}`.trim();
-    if (!street.trim() || !houseNumber.trim() || !zip.trim() || !city.trim()) {
-      toast({ title: "Bitte vollständige Adresse angeben", variant: "destructive" });
-      return;
-    }
-    setGeocoding(true);
-    setSubmitting(true);
-    try {
-      const { data: geo, error: geoErr } = await supabase.functions.invoke("geocode-address", {
-        body: { address: fullAddress },
-      });
-      if (geoErr || !geo || geo.error) {
-        toast({
-          title: "Adresse nicht gefunden",
-          description: geo?.error ?? geoErr?.message ?? "Bitte Eingabe prüfen.",
-          variant: "destructive",
-        });
-        return;
-      }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { error } = await supabase.from("locations").insert({
-        user_id: user.id,
-        name,
-        address: geo.formatted_address,
-        latitude: geo.latitude,
-        longitude: geo.longitude,
-      });
-      if (error) {
-        toast({ title: "Fehler", description: error.message, variant: "destructive" });
-        return;
-      }
-      setOpen(false);
-      setName(""); setStreet(""); setHouseNumber(""); setZip(""); setCity("");
-      toast({ title: "Standort hinzugefügt", description: geo.formatted_address });
-      await loadData(user.id);
-    } finally {
-      setGeocoding(false);
-      setSubmitting(false);
-    }
   };
 
 
@@ -375,59 +345,11 @@ const Dashboard = () => {
             >
               <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} /> Aktualisieren
             </button>
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity">
-                  <Plus size={16} /> Standort hinzufügen
-                </button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Neuer Standort</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleAdd} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="lname">Name</Label>
-                    <Input id="lname" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Sortier-Anlage Nord" />
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-2 col-span-2">
-                      <Label htmlFor="lstreet">Straße</Label>
-                      <Input id="lstreet" value={street} onChange={(e) => setStreet(e.target.value)} required placeholder="Hauptstraße" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lhnr">Hausnr.</Label>
-                      <Input id="lhnr" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} required placeholder="12a" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="lzip">PLZ</Label>
-                      <Input id="lzip" value={zip} onChange={(e) => setZip(e.target.value)} required placeholder="10115" />
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label htmlFor="lcity">Stadt</Label>
-                      <Input id="lcity" value={city} onChange={(e) => setCity(e.target.value)} required placeholder="Berlin" />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Die Koordinaten werden automatisch aus der Adresse ermittelt.
-                  </p>
-                  <DialogFooter>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
-                    >
-                      {(submitting || geocoding) && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {geocoding ? "Adresse prüfen…" : "Hinzufügen"}
-
-                    </button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
           </div>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+          Standorte und Einwürfe werden direkt aus der externen Produktiv-Datenbank gelesen.
         </div>
 
         {(() => {
