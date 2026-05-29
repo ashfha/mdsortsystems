@@ -351,7 +351,6 @@ const Dashboard = () => {
         <div className="mb-6 rounded-xl border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
           Standorte und Einwürfe werden direkt aus der externen Produktiv-Datenbank gelesen.
         </div>
-        </div>
 
         {(() => {
           const fullLocs = locations.filter(isFull);
