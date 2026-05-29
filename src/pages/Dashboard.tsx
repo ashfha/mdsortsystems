@@ -153,24 +153,28 @@ const Dashboard = () => {
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  // Realtime — externe DB (standorte + einwuerfe)
+  // Realtime — Einwürfe aus externer DB + eigene Standorte aus Lovable Cloud
   useEffect(() => {
     if (!userId) return;
-    const channel = externalSupabase
+    const localChannel = supabase
+      .channel("dashboard-live-local")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "locations", filter: `user_id=eq.${userId}` },
+        () => loadData(userId)
+      )
+      .subscribe();
+    const externalChannel = externalSupabase
       .channel("dashboard-live-external")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "einwuerfe" },
         () => loadData(userId)
       )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "standorte" },
-        () => loadData(userId)
-      )
       .subscribe();
     return () => {
-      externalSupabase.removeChannel(channel);
+      supabase.removeChannel(localChannel);
+      externalSupabase.removeChannel(externalChannel);
     };
   }, [userId]);
 
