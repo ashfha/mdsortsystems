@@ -137,24 +137,24 @@ const Dashboard = () => {
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
-  // Realtime
+  // Realtime — externe DB (standorte + einwuerfe)
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel("dashboard-live")
+    const channel = externalSupabase
+      .channel("dashboard-live-external")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "insertions", filter: `user_id=eq.${userId}` },
+        { event: "*", schema: "public", table: "einwuerfe" },
         () => loadData(userId)
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "locations", filter: `user_id=eq.${userId}` },
+        { event: "*", schema: "public", table: "standorte" },
         () => loadData(userId)
       )
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      externalSupabase.removeChannel(channel);
     };
   }, [userId]);
 
