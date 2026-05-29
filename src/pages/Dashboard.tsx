@@ -273,22 +273,25 @@ const Dashboard = () => {
   const loadData = async (uid: string) => {
     setRefreshing(true);
     const [
-      { data: standorte, error: sErr },
+      { data: locs, error: lErr },
       { data: einwuerfe, error: eErr },
       { data: prof },
     ] = await Promise.all([
-      externalSupabase.from("standorte").select("*"),
+      supabase
+        .from("locations")
+        .select("id,name,address,latitude,longitude")
+        .order("created_at", { ascending: false }),
       externalSupabase.from("einwuerfe").select("id,standort_id,material,anzahl,timestamp,created_at"),
       supabase.from("profiles").select("company_name").eq("user_id", uid).maybeSingle(),
     ]);
-    if (sErr) {
-      toast({ title: "Fehler beim Laden der Standorte", description: sErr.message, variant: "destructive" });
+    if (lErr) {
+      toast({ title: "Fehler beim Laden der Standorte", description: lErr.message, variant: "destructive" });
     }
     if (eErr) {
       toast({ title: "Fehler beim Laden der Einwürfe", description: eErr.message, variant: "destructive" });
     }
 
-    // Aggregate einwuerfe per standort
+    // Aggregate einwuerfe per standort_id
     const agg = new Map<
       string,
       { white: number; colored: number; total: number; count: number; last: string | null }
@@ -306,25 +309,66 @@ const Dashboard = () => {
       agg.set(e.standort_id, cur);
     });
 
-    const merged: LocationWithStats[] = ((standorte as StandortRow[]) ?? [])
-      .map(normalizeStandort)
-      .filter((l) => Number.isFinite(l.latitude) && Number.isFinite(l.longitude))
-      .map((l) => {
-        const a = agg.get(l.id);
-        return {
-          ...l,
-          total_inserted: a?.total ?? 0,
-          white_inserted: a?.white ?? 0,
-          colored_inserted: a?.colored ?? 0,
-          event_count: a?.count ?? 0,
-          last_insertion_at: a?.last ?? null,
-        };
-      });
+    const merged: LocationWithStats[] = ((locs as LocationRow[]) ?? []).map((l) => {
+      const a = agg.get(l.id);
+      return {
+        ...l,
+        total_inserted: a?.total ?? 0,
+        white_inserted: a?.white ?? 0,
+        colored_inserted: a?.colored ?? 0,
+        event_count: a?.count ?? 0,
+        last_insertion_at: a?.last ?? null,
+      };
+    });
 
     setLocations(merged);
     setCompanyName(prof?.company_name ?? "");
     setLoading(false);
     setRefreshing(false);
+  };
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const fullAddress = `${street.trim()} ${houseNumber.trim()}, ${zip.trim()} ${city.trim()}`.trim();
+    if (!street.trim() || !houseNumber.trim() || !zip.trim() || !city.trim()) {
+      toast({ title: "Bitte vollständige Adresse angeben", variant: "destructive" });
+      return;
+    }
+    setGeocoding(true);
+    setSubmitting(true);
+    try {
+      const { data: geo, error: geoErr } = await supabase.functions.invoke("geocode-address", {
+        body: { address: fullAddress },
+      });
+      if (geoErr || !geo || geo.error) {
+        toast({
+          title: "Adresse nicht gefunden",
+          description: geo?.error ?? geoErr?.message ?? "Bitte Eingabe prüfen.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from("locations").insert({
+        user_id: user.id,
+        name,
+        address: geo.formatted_address,
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+      });
+      if (error) {
+        toast({ title: "Fehler", description: error.message, variant: "destructive" });
+        return;
+      }
+      setOpen(false);
+      setName(""); setStreet(""); setHouseNumber(""); setZip(""); setCity("");
+      toast({ title: "Standort hinzugefügt", description: geo.formatted_address });
+      await loadData(user.id);
+    } finally {
+      setGeocoding(false);
+      setSubmitting(false);
+    }
   };
 
 
