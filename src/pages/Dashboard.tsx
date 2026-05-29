@@ -3,16 +3,24 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   externalSupabase,
-  normalizeStandort,
   isWhiteMaterial,
   isColoredMaterial,
-  type StandortRow,
   type EinwurfRow,
 } from "@/integrations/external/client";
 import { toast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
-import { Loader2, MapPin, Package, RefreshCw, Radio } from "lucide-react";
+import { Loader2, MapPin, Package, Plus, RefreshCw, Radio } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 type LocationRow = {
   id: string;
