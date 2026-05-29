@@ -409,12 +409,60 @@ const Dashboard = () => {
             >
               <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} /> Aktualisieren
             </button>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity">
+                  <Plus size={16} /> Standort hinzufügen
+                </button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Neuer Standort</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleAdd} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lname">Name</Label>
+                    <Input id="lname" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Sortier-Anlage Nord" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="lstreet">Straße</Label>
+                      <Input id="lstreet" value={street} onChange={(e) => setStreet(e.target.value)} required placeholder="Hauptstraße" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lhnr">Hausnr.</Label>
+                      <Input id="lhnr" value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} required placeholder="12a" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="lzip">PLZ</Label>
+                      <Input id="lzip" value={zip} onChange={(e) => setZip(e.target.value)} required placeholder="10115" />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="lcity">Stadt</Label>
+                      <Input id="lcity" value={city} onChange={(e) => setCity(e.target.value)} required placeholder="Berlin" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Die Koordinaten werden automatisch aus der Adresse ermittelt.
+                  </p>
+                  <DialogFooter>
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
+                    >
+                      {(submitting || geocoding) && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {geocoding ? "Adresse prüfen…" : "Hinzufügen"}
+                    </button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
-        <div className="mb-6 rounded-xl border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-          Standorte und Einwürfe werden direkt aus der externen Produktiv-Datenbank gelesen.
-        </div>
 
         {(() => {
           const fullLocs = locations.filter(isFull);
