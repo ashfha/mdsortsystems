@@ -298,12 +298,16 @@ const Dashboard = () => {
     >();
     ((einwuerfe as EinwurfRow[]) ?? []).forEach((e) => {
       if (!e.standort_id) return;
+      const isWhite = isWhiteMaterial(e.material);
+      const isColored = isColoredMaterial(e.material);
+      // "Keine Flasche" oder unbekanntes Material → komplett ignorieren
+      if (!isWhite && !isColored) return;
       const cur = agg.get(e.standort_id) ?? { white: 0, colored: 0, total: 0, count: 0, last: null };
-      const qty = Number(e.anzahl ?? 0);
+      const qty = Number(e.anzahl ?? 1) || 1;
       cur.total += qty;
       cur.count += 1;
-      if (isWhiteMaterial(e.material)) cur.white += qty;
-      else if (isColoredMaterial(e.material)) cur.colored += qty;
+      if (isWhite) cur.white += qty;
+      else if (isColored) cur.colored += qty;
       const ts = e.timestamp ?? e.created_at;
       if (ts && (!cur.last || ts > cur.last)) cur.last = ts;
       agg.set(e.standort_id, cur);
