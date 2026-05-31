@@ -291,30 +291,25 @@ const Dashboard = () => {
       toast({ title: "Fehler beim Laden der Einwürfe", description: eErr.message, variant: "destructive" });
     }
 
-    // Aggregate einwuerfe per standort_id
-    const agg = new Map<
-      string,
-      { white: number; colored: number; total: number; count: number; last: string | null }
-    >();
+    // Aggregate einwuerfe — ALLE Einwürfe (egal welche standort_id) werden
+    // dem ersten Standort ("Zuhause") zugeordnet.
+    const home = { white: 0, colored: 0, total: 0, count: 0, last: null as string | null };
     ((einwuerfe as EinwurfRow[]) ?? []).forEach((e) => {
-      if (!e.standort_id) return;
       const isWhite = isWhiteMaterial(e.material);
       const isColored = isColoredMaterial(e.material);
       // "Keine Flasche" oder unbekanntes Material → komplett ignorieren
       if (!isWhite && !isColored) return;
-      const cur = agg.get(e.standort_id) ?? { white: 0, colored: 0, total: 0, count: 0, last: null };
       const qty = Number(e.anzahl ?? 1) || 1;
-      cur.total += qty;
-      cur.count += 1;
-      if (isWhite) cur.white += qty;
-      else if (isColored) cur.colored += qty;
+      home.total += qty;
+      home.count += 1;
+      if (isWhite) home.white += qty;
+      else if (isColored) home.colored += qty;
       const ts = e.timestamp ?? e.created_at;
-      if (ts && (!cur.last || ts > cur.last)) cur.last = ts;
-      agg.set(e.standort_id, cur);
+      if (ts && (!home.last || ts > home.last)) home.last = ts;
     });
 
-    const merged: LocationWithStats[] = ((locs as LocationRow[]) ?? []).map((l) => {
-      const a = agg.get(l.id);
+    const merged: LocationWithStats[] = ((locs as LocationRow[]) ?? []).map((l, idx) => {
+      const a = idx === 0 ? home : null;
       return {
         ...l,
         total_inserted: a?.total ?? 0,
