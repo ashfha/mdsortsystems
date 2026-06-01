@@ -13,7 +13,6 @@ export const externalSupabase = createClient(EXTERNAL_URL, EXTERNAL_PUBLISHABLE_
 
 export type EinwurfRow = {
   id: string;
-  standort_id: string | null;
   material: string;
   anzahl: number;
   timestamp: string | null;
