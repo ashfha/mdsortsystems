@@ -21,6 +21,16 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RTooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
 
 type LocationRow = {
   id: string;
@@ -606,6 +616,54 @@ const Dashboard = () => {
             ) : (
               <div ref={mapRef} className="h-full w-full" />
             )}
+          </div>
+        </div>
+
+        {/* Vergleichschart Weiß- vs. Buntglas */}
+        <div className="rounded-xl border border-border bg-card p-6 mt-6">
+          <div className="mb-4">
+            <h2 className="font-semibold text-foreground">Vergleich: Weißglas vs. Buntglas</h2>
+            <p className="text-xs text-muted-foreground">
+              Anzahl eingeworfener Flaschen nach Glasart (gesamt)
+            </p>
+          </div>
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={[
+                  { name: "Weißglas", value: totalWhite },
+                  { name: "Buntglas", value: totalColored },
+                ]}
+                margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
+                <RTooltip
+                  contentStyle={{
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    color: "hsl(var(--foreground))",
+                  }}
+                  formatter={(v: number) => [v.toLocaleString("de-DE"), "Einwürfe"]}
+                />
+                <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                  <Cell fill="hsl(var(--foreground))" fillOpacity={0.8} />
+                  <Cell fill="hsl(var(--accent))" />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-sm bg-foreground/80 inline-block" />
+              Weißglas: {totalWhite.toLocaleString("de-DE")}
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-3 w-3 rounded-sm bg-accent inline-block" />
+              Buntglas: {totalColored.toLocaleString("de-DE")}
+            </span>
           </div>
         </div>
 
