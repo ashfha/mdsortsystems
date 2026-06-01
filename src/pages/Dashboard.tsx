@@ -281,7 +281,7 @@ const Dashboard = () => {
         .from("locations")
         .select("id,name,address,latitude,longitude")
         .order("created_at", { ascending: false }),
-      externalSupabase.from("einwuerfe").select("id,standort_id,material,anzahl,timestamp,created_at"),
+      externalSupabase.from("einwuerfe").select("id,material,anzahl,timestamp,created_at"),
       supabase.from("profiles").select("company_name").eq("user_id", uid).maybeSingle(),
     ]);
     if (lErr) {
