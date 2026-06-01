@@ -608,6 +608,15 @@ const Dashboard = () => {
             {loading ? (
               <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                 <Loader2 className="animate-spin mr-2" /> Lade Karte…
+              </div>
+            ) : mapError ? (
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-destructive p-4 text-center">
+                {mapError}
+              </div>
+            ) : (
+              <div ref={mapRef} className="h-full w-full" />
+            )}
+          </div>
         </div>
 
         {/* Vergleichschart Weiß- vs. Buntglas */}
@@ -655,15 +664,6 @@ const Dashboard = () => {
               <span className="h-3 w-3 rounded-sm bg-accent inline-block" />
               Buntglas: {totalColored.toLocaleString("de-DE")}
             </span>
-          </div>
-        </div>
-            ) : mapError ? (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-destructive p-4 text-center">
-                {mapError}
-              </div>
-            ) : (
-              <div ref={mapRef} className="h-full w-full" />
-            )}
           </div>
         </div>
 
