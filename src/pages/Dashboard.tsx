@@ -9,7 +9,7 @@ import {
 } from "@/integrations/external/client";
 import { toast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
-import { Loader2, MapPin, Package, Plus, RefreshCw, Radio } from "lucide-react";
+import { Activity, Loader2, MapPin, Package, Plus, RefreshCw, Radio, Timer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -495,6 +495,42 @@ const Dashboard = () => {
           );
         })()}
 
+
+        {/* Live-Daten direkt aus der Datenbank (einwuerfe) */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-semibold text-primary flex items-center gap-2">
+                <Activity size={14} className="animate-pulse" />
+                Live aus der Datenbank
+              </p>
+              <h2 className="text-xl font-bold text-foreground">Einwurfdaten direkt von der Anlage</h2>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="rounded-xl border border-border bg-card p-5">
+              <p className="text-xs text-muted-foreground">Einwürfe gesamt</p>
+              <p className="text-2xl font-bold text-foreground mt-1">{totalSum.toLocaleString("de-DE")}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-5">
+              <p className="text-xs text-muted-foreground">Weißglas</p>
+              <p className="text-2xl font-bold text-foreground mt-1">{totalWhite.toLocaleString("de-DE")}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-5">
+              <p className="text-xs text-muted-foreground">Buntglas</p>
+              <p className="text-2xl font-bold text-foreground mt-1">{totalColored.toLocaleString("de-DE")}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-5">
+              <p className="text-xs text-muted-foreground">Letztes Signal</p>
+              <p className="text-sm font-semibold text-foreground mt-1 flex items-center gap-2">
+                <Timer size={14} />
+                {locations[0]?.last_insertion_at
+                  ? new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(locations[0].last_insertion_at))
+                  : "Noch kein Signal"}
+              </p>
+            </div>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="rounded-xl border border-border bg-card p-6">
