@@ -1,4 +1,4 @@
-import aboutTeam from "@/assets/about-team.jpg";
+import aboutTeam from "@/assets/team.png.asset.json";
 import { Target, Users, Lightbulb } from "lucide-react";
 
 const values = [
