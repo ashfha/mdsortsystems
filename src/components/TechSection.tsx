@@ -1,4 +1,4 @@
-import techDiagram from "@/assets/tech-diagram.jpg";
+import techDiagram from "@/assets/farberkennung-ldr.jpeg.asset.json";
 
 const steps = [
   {
