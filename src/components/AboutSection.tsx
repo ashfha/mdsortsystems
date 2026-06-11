@@ -1,4 +1,4 @@
-import aboutTeam from "@/assets/about-team.jpg";
+import aboutTeam from "@/assets/team.png.asset.json";
 import { Target, Users, Lightbulb } from "lucide-react";
 
 const values = [
@@ -32,7 +32,7 @@ const AboutSection = () => (
 
       <div className="grid lg:grid-cols-2 gap-12 items-center mb-16">
         <div className="rounded-2xl overflow-hidden shadow-lg border border-border">
-          <img src={aboutTeam} alt="Das Team von MD Sort Systems im Labor" loading="lazy" width={1024} height={680} className="w-full object-cover" />
+          <img src={aboutTeam.url} alt="Das Team von MD Sort Systems" loading="lazy" width={1024} height={680} className="w-full object-cover" />
         </div>
         <div className="space-y-8">
           {values.map((v) => (
