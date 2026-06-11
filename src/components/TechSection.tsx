@@ -30,7 +30,7 @@ const TechSection = () => (
       <div className="grid md:grid-cols-2 gap-12 items-center">
         <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/80">
           <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 via-transparent to-accent/10 mix-blend-multiply dark:mix-blend-screen" />
-          <img src={techDiagram} alt="Technische Funktionsweise: LDR-Sensor und Servomotor im Einsatz" loading="lazy" width={1024} height={768} className="w-full object-cover" />
+          <img src={techDiagram.url} alt="Technische Funktionsweise: LDR-Sensor und Servomotor im Einsatz" loading="lazy" width={1024} height={768} className="w-full object-cover" />
         </div>
         <div className="space-y-8">
           {steps.map((s) => (
