@@ -1,1 +1,1 @@
-export { default } from "./TravelMatch2";
+export { default } from "./GlobalTravel";
