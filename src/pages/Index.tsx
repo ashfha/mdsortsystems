@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowRight,
   BadgeCheck,
   BarChart3,
   Bookmark,
@@ -19,7 +18,6 @@ import {
   Plane,
   Search,
   Sparkles,
-  Star,
   Users,
   Zap,
 } from "lucide-react";
@@ -34,11 +32,11 @@ import {
   destinationKey,
   formatEuro,
   monthLabel,
-  parseTravelPrompt,
   recommendDestinations,
   type TravelBundle,
   type TravelRecommendation,
 } from "@/lib/travelMatch";
+import { fetchLiveWeather, type LiveWeather } from "@/lib/live-weather";
 
 type SavedCard = {
   key: string;
@@ -73,12 +71,13 @@ export default function Index() {
   const [authEmail, setAuthEmail] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
 
-  const [prompt, setPrompt] = useState(() => loadStorage(STORAGE_KEYS.prompt, INITIAL_PROMPT));
-  const [bundle, setBundle] = useState<TravelBundle>(() => recommendDestinations(loadStorage(STORAGE_KEYS.prompt, INITIAL_PROMPT)));
-  const [selectedId, setSelectedId] = useState<string>(() => recommendDestinations(loadStorage(STORAGE_KEYS.prompt, INITIAL_PROMPT)).recommendations[0]?.id ?? "");
-  const [favorites, setFavorites] = useState<SavedCard[]>(() => loadFavorites());
-  const [history, setHistory] = useState<string[]>(() => loadHistory());
+  const [prompt, setPrompt] = useState(() => readText(STORAGE_KEYS.prompt, INITIAL_PROMPT));
+  const [bundle, setBundle] = useState<TravelBundle>(() => recommendDestinations(readText(STORAGE_KEYS.prompt, INITIAL_PROMPT)));
+  const [selectedId, setSelectedId] = useState<string>(() => recommendDestinations(readText(STORAGE_KEYS.prompt, INITIAL_PROMPT)).recommendations[0]?.id ?? "");
+  const [favorites, setFavorites] = useState<SavedCard[]>(() => readFavorites());
+  const [history, setHistory] = useState<string[]>(() => readHistory());
   const [isGenerating, setIsGenerating] = useState(false);
+  const [weatherLoading, setWeatherLoading] = useState(false);
   const [cloudReady, setCloudReady] = useState(false);
 
   const selected = useMemo(
@@ -91,10 +90,12 @@ export default function Index() {
       const user = data.session?.user;
       setSessionUser(user ? { id: user.id, email: user.email ?? null } : null);
     });
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       const user = session?.user;
       setSessionUser(user ? { id: user.id, email: user.email ?? null } : null);
     });
+
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -132,9 +133,7 @@ export default function Index() {
         .order("created_at", { ascending: false })
         .limit(8);
 
-      if (searches?.length) {
-        setHistory(searches.map((row: any) => row.raw_input).filter(Boolean));
-      }
+      if (searches?.length) setHistory(searches.map((row: any) => row.raw_input).filter(Boolean));
       setCloudReady(true);
     } catch (error) {
       console.warn(error);
@@ -144,21 +143,60 @@ export default function Index() {
   async function generateTrip(nextPrompt = prompt) {
     const clean = nextPrompt.trim();
     if (!clean) return;
-    setIsGenerating(true);
-    setPrompt(clean);
-    writeStorage(STORAGE_KEYS.prompt, clean);
 
-    window.setTimeout(async () => {
-      const next = recommendDestinations(clean);
-      setBundle(next);
-      setSelectedId(next.recommendations[0]?.id ?? "");
-      upsertHistory(clean);
-      setHistory(loadHistory());
-      if (sessionUser) {
-        await persistSearch(sessionUser.id, clean, next);
-      }
+    setIsGenerating(true);
+    setWeatherLoading(true);
+    setPrompt(clean);
+    writeText(STORAGE_KEYS.prompt, clean);
+
+    const estimated = recommendDestinations(clean);
+    setBundle(estimated);
+    setSelectedId(estimated.recommendations[0]?.id ?? "");
+    upsertHistory(clean);
+    setHistory(readHistory());
+
+    try {
+      const hydrated = await Promise.all(
+        estimated.recommendations.map(async (rec) => {
+          const liveWeather = await fetchLiveWeather({
+            destinationName: rec.name,
+            country: rec.country,
+            fallback: {
+              source: "fallback",
+              period: rec.weather.period,
+              highC: rec.weather.highC,
+              lowC: rec.weather.lowC,
+              rain: rec.weather.rain,
+              summary: rec.weather.summary,
+            },
+          });
+
+          return {
+            ...rec,
+            weather: {
+              period: liveWeather.period,
+              highC: liveWeather.highC,
+              lowC: liveWeather.lowC,
+              rain: liveWeather.rain,
+              summary: liveWeather.source === "live" ? liveWeather.summary : rec.weather.summary,
+            },
+          } satisfies TravelRecommendation;
+        }),
+      );
+
+      const withLiveWeather: TravelBundle = {
+        parsed: estimated.parsed,
+        recommendations: hydrated,
+      };
+      setBundle(withLiveWeather);
+    } finally {
       setIsGenerating(false);
-    }, 650);
+      setWeatherLoading(false);
+    }
+
+    if (sessionUser) {
+      void persistSearch(sessionUser.id, clean, estimated);
+    }
   }
 
   async function persistSearch(userId: string, rawInput: string, next: TravelBundle) {
@@ -175,10 +213,10 @@ export default function Index() {
       if (searchErr || !searchRow) return;
 
       await supabase.from("recommendations").insert(
-        next.recommendations.map((rec) => ({
+        next.recommendations.map((rec, index) => ({
           search_id: searchRow.id,
           user_id: userId,
-          rank: rec.matchScore,
+          rank: index + 1,
           destination_name: rec.name,
           country: rec.country,
           iata: rec.iata,
@@ -218,12 +256,11 @@ export default function Index() {
     const email = authEmail.trim();
     if (!email) return;
     setAuthBusy(true);
+
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: {
-          emailRedirectTo: window.location.origin,
-        },
+        options: { emailRedirectTo: window.location.origin },
       });
       if (error) throw error;
       toast.success("Magic link sent", { description: "Check your inbox to finish signing in." });
@@ -248,18 +285,18 @@ export default function Index() {
     if (exists) {
       const next = favorites.filter((item) => item.key !== key);
       setFavorites(next);
-      writeStorage(STORAGE_KEYS.favorites, next);
+      writeFavorites(next);
       if (sessionUser) {
         await supabase.from("saved_destinations").delete().eq("user_id", sessionUser.id).eq("destination_key", key);
       }
-      toast.message("Removed from saved trips");
+      toast("Removed from saved trips");
       return;
     }
 
     const nextItem: SavedCard = { key, rec };
     const next = [nextItem, ...favorites];
     setFavorites(next);
-    writeStorage(STORAGE_KEYS.favorites, next);
+    writeFavorites(next);
     toast.success("Saved to favorites");
 
     if (sessionUser) {
@@ -275,7 +312,9 @@ export default function Index() {
     }
   }
 
-  const selectedFavourite = selected ? favorites.some((item) => item.key === destinationKey(selected.name, selected.country)) : false;
+  const selectedFavourite = selected
+    ? favorites.some((item) => item.key === destinationKey(selected.name, selected.country))
+    : false;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -321,7 +360,7 @@ export default function Index() {
 
       <main id="top" className="mx-auto max-w-7xl px-4">
         <section className="grid gap-10 pb-10 pt-14 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:pb-14 lg:pt-20">
-          <div className="space-y-7">
+          <div className="space-y-7 fade-up">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/80 px-4 py-2 text-xs font-medium text-muted-foreground shadow-soft">
               <Sparkles className="h-3.5 w-3.5 text-accent" />
               AI travel matching with value-first ranking
@@ -387,7 +426,7 @@ export default function Index() {
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button className="h-12 flex-1 rounded-2xl text-base" onClick={() => generateTrip()} disabled={isGenerating}>
+                <Button className="h-12 flex-1 rounded-2xl text-base" onClick={() => void generateTrip()} disabled={isGenerating}>
                   {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                   Find my trip
                 </Button>
@@ -435,7 +474,7 @@ export default function Index() {
               </Badge>
             </div>
 
-            {isGenerating && (
+            {(isGenerating || weatherLoading) && (
               <Card className="rounded-3xl p-6 shadow-soft">
                 <div className="flex items-center gap-3">
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -551,7 +590,9 @@ export default function Index() {
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="rounded-3xl border border-border/60 bg-background/70 p-4">
                         <div className="font-medium">Weather for {selected.weather.period}</div>
-                        <p className="mt-2 text-sm text-muted-foreground">{selected.weather.summary}. Expect about {selected.weather.highC}°C / {selected.weather.lowC}°C.</p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          {selected.weather.summary}. Expect about {selected.weather.highC}°C / {selected.weather.lowC}°C.
+                        </p>
                       </div>
                       <div className="rounded-3xl border border-border/60 bg-background/70 p-4">
                         <div className="font-medium">Score breakdown</div>
@@ -652,7 +693,7 @@ export default function Index() {
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
             {history.length ? history.map((item) => (
-              <button key={item} onClick={() => generateTrip(item)} className="rounded-full border border-border bg-card px-4 py-2 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground">
+              <button key={item} onClick={() => void generateTrip(item)} className="rounded-full border border-border bg-card px-4 py-2 text-sm text-muted-foreground transition hover:border-primary/40 hover:text-foreground">
                 {item}
               </button>
             )) : (
@@ -667,7 +708,7 @@ export default function Index() {
               <div className="max-w-2xl">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Built to decide faster</p>
                 <h2 className="mt-2 font-display text-3xl font-semibold sm:text-4xl">No more tab chaos. One place, one shortlist.</h2>
-                <p className="mt-3 text-muted-foreground">The app can later plug in live flight, hotel, weather, and map providers without changing the core experience.</p>
+                <p className="mt-3 text-muted-foreground">The app already uses live weather, and the next step is to drop in live flight and hotel providers without changing the core experience.</p>
               </div>
               <div className="flex gap-3">
                 <Button onClick={() => setAuthOpen(true)} className="rounded-2xl">
@@ -703,7 +744,7 @@ export default function Index() {
             <p className="mt-3 text-sm text-muted-foreground">Enter your email and we&apos;ll send a magic link. Search history and favorites can then sync to Supabase.</p>
             <div className="mt-5 space-y-3">
               <Input value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} placeholder="you@example.com" className="h-12 rounded-2xl" />
-              <Button className="h-12 w-full rounded-2xl" onClick={signInWithMagicLink} disabled={authBusy}>
+              <Button className="h-12 w-full rounded-2xl" onClick={() => void signInWithMagicLink()} disabled={authBusy}>
                 {authBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
                 Send magic link
               </Button>
@@ -765,23 +806,23 @@ function InfoPanel({ icon: Icon, title, body }: { icon: React.ElementType; title
   );
 }
 
-function loadStorage(key: string, fallback: string) {
+function readText(key: string, fallback: string) {
   if (typeof window === "undefined") return fallback;
   return window.localStorage.getItem(key) ?? fallback;
 }
 
-function writeStorage(key: string, value: string) {
+function writeText(key: string, value: string) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(key, value);
 }
 
 function upsertHistory(prompt: string) {
-  const current = loadHistory().filter((item) => item !== prompt);
+  const current = readHistory().filter((item) => item !== prompt);
   const next = [prompt, ...current].slice(0, 10);
-  writeStorage(STORAGE_KEYS.history, JSON.stringify(next));
+  writeText(STORAGE_KEYS.history, JSON.stringify(next));
 }
 
-function loadHistory() {
+function readHistory() {
   if (typeof window === "undefined") return [] as string[];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEYS.history);
@@ -791,18 +832,25 @@ function loadHistory() {
   }
 }
 
-function loadFavorites(): SavedCard[] {
+function writeFavorites(favorites: SavedCard[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favorites));
+}
+
+function readFavorites(): SavedCard[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEYS.favorites);
-    if (!raw) return [];
-    return JSON.parse(raw) as SavedCard[];
+    return raw ? (JSON.parse(raw) as SavedCard[]) : [];
   } catch {
     return [];
   }
 }
 
-function normalizeSnapshot(snapshot: any, fallback: { id: string; name: string; country: string; image: string; matchScore: number }): TravelRecommendation {
+function normalizeSnapshot(
+  snapshot: any,
+  fallback: { id: string; name: string; country: string; image: string; matchScore: number },
+): TravelRecommendation {
   if (snapshot && typeof snapshot === "object") {
     return {
       id: snapshot.id ?? fallback.id,
@@ -823,6 +871,7 @@ function normalizeSnapshot(snapshot: any, fallback: { id: string; name: string; 
       tips: Array.isArray(snapshot.tips) ? snapshot.tips : [],
     };
   }
+
   return {
     id: fallback.id,
     name: fallback.name,
