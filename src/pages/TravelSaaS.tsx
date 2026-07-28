@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ElementType } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -15,6 +15,12 @@ import {
   Users,
   Wallet,
   Waves,
+  PanelTop,
+  ShieldCheck,
+  Sparkle,
+  Brain,
+  Clock3,
+  Route,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -42,26 +48,84 @@ const CHECKLISTS = [
   "Strand nah",
   "Bester Preis",
   "Bestes Preis-Leistungs-Verhältnis",
+  "Flexibles Datum",
+  "Nur ruhige Hotels",
+];
+
+const DESTINATIONS = [
+  {
+    name: "Mallorca",
+    country: "Spain",
+    region: "Europe",
+    summary: "Easy beach escape with good hotels and short flights.",
+    image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80",
+    price: 860,
+  },
+  {
+    name: "Dubai",
+    country: "United Arab Emirates",
+    region: "Middle East",
+    summary: "Luxury skyline, shopping and winter sun.",
+    image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1400&q=80",
+    price: 1320,
+  },
+  {
+    name: "Bangkok",
+    country: "Thailand",
+    region: "Asia",
+    summary: "Food, culture and extremely strong value.",
+    image: "https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&w=1400&q=80",
+    price: 1180,
+  },
+  {
+    name: "Cape Town",
+    country: "South Africa",
+    region: "Africa",
+    summary: "Ocean, mountains and a real outdoors mix.",
+    image: "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=1400&q=80",
+    price: 1490,
+  },
 ];
 
 export default function TravelSaaS() {
   const [brief, setBrief] = useState("I want warm weather, good food, no party, max 2200€, from Stuttgart, 7 days");
   const [budget, setBudget] = useState(2200);
   const [people, setPeople] = useState(2);
+  const [departureDate, setDepartureDate] = useState("2026-09-10");
+  const [tripLength, setTripLength] = useState(7);
 
   const preview = useMemo(
-    () => `${people} Personen · bis ${new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(budget)} · ${brief}`,
-    [brief, budget, people],
+    () => `${people} Personen · bis ${currency(budget)} · ${tripLength} Tage · Abflug ${departureDate}`,
+    [budget, people, departureDate, tripLength],
   );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:py-10 lg:py-14">
+      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/70 backdrop-blur-2xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-hero text-primary-foreground shadow-elegant">
+              <Compass className="h-5 w-5" />
+            </span>
+            <div>
+              <div className="font-display text-lg font-semibold tracking-tight">TravelMatch</div>
+              <div className="text-xs text-muted-foreground">Premium travel SaaS</div>
+            </div>
+          </div>
+          <div className="hidden items-center gap-2 md:flex">
+            <Badge variant="secondary" className="rounded-full px-3 py-2">Live search</Badge>
+            <Badge variant="secondary" className="rounded-full px-3 py-2">Account-ready</Badge>
+            <Button size="sm" className="rounded-full">Get started</Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8 lg:pt-12">
         <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs text-muted-foreground shadow-soft">
               <Sparkles className="h-3.5 w-3.5 text-accent" />
-              Premium travel SaaS foundation
+              Startup-grade travel concierge
             </div>
 
             <div className="space-y-4">
@@ -101,17 +165,9 @@ export default function TravelSaaS() {
                 <div className="rounded-3xl border border-border/70 bg-background/55 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Budget</div>
-                    <div className="font-medium">{new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(budget)}</div>
+                    <div className="font-medium">{currency(budget)}</div>
                   </div>
-                  <input
-                    className="mt-4 w-full accent-[hsl(var(--primary))]"
-                    type="range"
-                    min={500}
-                    max={9000}
-                    step={100}
-                    value={budget}
-                    onChange={(e) => setBudget(Number(e.target.value))}
-                  />
+                  <input className="mt-4 w-full accent-[hsl(var(--primary))]" type="range" min={500} max={9000} step={100} value={budget} onChange={(e) => setBudget(Number(e.target.value))} />
                 </div>
                 <div className="rounded-3xl border border-border/70 bg-background/55 p-4">
                   <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Travelers</div>
@@ -123,42 +179,77 @@ export default function TravelSaaS() {
                 </div>
               </div>
 
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-3xl border border-border/70 bg-background/55 p-4">
+                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Departure date</div>
+                  <Input value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} className="mt-3 h-12 rounded-2xl" />
+                </div>
+                <div className="rounded-3xl border border-border/70 bg-background/55 p-4">
+                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Trip length</div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <input className="w-full accent-[hsl(var(--primary))]" type="range" min={3} max={21} step={1} value={tripLength} onChange={(e) => setTripLength(Number(e.target.value))} />
+                    <div className="min-w-12 text-right font-semibold">{tripLength}d</div>
+                  </div>
+                </div>
+              </div>
+
               <div className="mt-4 rounded-3xl border border-border/70 bg-background/55 p-4 text-sm text-muted-foreground">
                 {preview}
               </div>
             </Card>
           </div>
 
-          <Card className="rounded-[2rem] border-border/70 bg-card p-5 shadow-elegant">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Trip design</p>
-                <h2 className="mt-1 font-display text-2xl font-semibold">A clean product feel</h2>
-              </div>
-              <div className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">Startup UI</div>
-            </div>
-
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {TYPE_CARDS.map((item) => (
-                <div key={item.label} className="rounded-3xl border border-border/70 bg-background/60 p-4 transition hover:-translate-y-0.5 hover:shadow-soft">
-                  <div className="flex items-center gap-3">
-                    <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><Compass className="h-4 w-4" /></div>
-                    <div className="font-medium">{item.label}</div>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.description}</p>
+          <div className="space-y-6">
+            <Card className="rounded-[2rem] border-border/70 bg-card p-5 shadow-elegant">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Trip design</p>
+                  <h2 className="mt-1 font-display text-2xl font-semibold">A clean product feel</h2>
                 </div>
-              ))}
-            </div>
+                <div className="rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">Startup UI</div>
+              </div>
 
-            <div className="mt-5 grid gap-3">
-              {CHECKLISTS.map((item) => (
-                <label key={item} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/55 px-4 py-3 text-sm transition hover:border-primary/40">
-                  <input type="checkbox" className="h-4 w-4 rounded border-border text-primary" />
-                  <span>{item}</span>
-                </label>
-              ))}
-            </div>
-          </Card>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {TYPE_CARDS.map((item) => (
+                  <div key={item.label} className="rounded-3xl border border-border/70 bg-background/60 p-4 transition hover:-translate-y-0.5 hover:shadow-soft">
+                    <div className="flex items-center gap-3">
+                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><Compass className="h-4 w-4" /></div>
+                      <div className="font-medium">{item.label}</div>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                {CHECKLISTS.map((item) => (
+                  <label key={item} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/55 px-4 py-3 text-sm transition hover:border-primary/40">
+                    <input type="checkbox" className="h-4 w-4 rounded border-border text-primary" />
+                    <span>{item}</span>
+                  </label>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="overflow-hidden rounded-[2rem] border-border/70 bg-card shadow-elegant">
+              <div className="relative">
+                <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80" alt="Travel overview" className="h-72 w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                <div className="absolute bottom-5 left-5 right-5">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-foreground backdrop-blur">
+                    <Waves className="h-3.5 w-3.5" />
+                    Premium travel matching
+                  </div>
+                  <h3 className="mt-3 max-w-xl font-display text-3xl font-semibold text-white">A modern travel assistant that feels like a product, not a demo.</h3>
+                </div>
+              </div>
+              <div className="grid gap-3 p-5 sm:grid-cols-3">
+                <MiniStat icon={Star} label="Curated" value="By preference" />
+                <MiniStat icon={Users} label="Social" value="Friends / groups" />
+                <MiniStat icon={Heart} label="Save" value="Favorites + history" />
+              </div>
+            </Card>
+          </div>
         </section>
 
         <section className="section-spacer grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -180,26 +271,32 @@ export default function TravelSaaS() {
             </div>
           </Card>
 
-          <Card className="overflow-hidden rounded-[2rem] border-border/70 bg-card shadow-elegant">
-            <div className="relative">
-              <img
-                src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80"
-                alt="Travel overview"
-                className="h-72 w-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-              <div className="absolute bottom-5 left-5 right-5">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-foreground backdrop-blur">
-                  <Waves className="h-3.5 w-3.5" />
-                  Premium travel matching
-                </div>
-                <h3 className="mt-3 max-w-xl font-display text-3xl font-semibold text-white">A modern travel assistant that feels like a product, not a demo.</h3>
+          <Card className="rounded-[2rem] border-border/70 bg-card p-5 shadow-elegant">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Recommendation engine</p>
+                <h3 className="mt-1 font-display text-2xl font-semibold">What the system prepares next</h3>
               </div>
+              <Badge variant="secondary" className="rounded-full">Roadmap</Badge>
             </div>
-            <div className="grid gap-3 p-5 sm:grid-cols-3">
-              <MiniStat icon={Star} label="Curated" value="By preference" />
-              <MiniStat icon={Users} label="Social" value="Friends / groups" />
-              <MiniStat icon={Heart} label="Save" value="Favorites + history" />
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {[
+                { icon: Brain, title: "AI travel profile", text: "Turns free text into a structured preference model." },
+                { icon: Plane, title: "Live flight offers", text: "Shows route, duration, layovers and price buckets." },
+                { icon: Hotel, title: "Hotel shortlist", text: "Sorts stays by fit, rating and value." },
+                { icon: Clock3, title: "Daily plan", text: "Creates a sensible itinerary for each day." },
+                { icon: Route, title: "Map layer", text: "Collects places and presents them on a map." },
+                { icon: ShieldCheck, title: "Travel safety", text: "Adds entry rules, visa and security info." },
+              ].map((item) => (
+                <div key={item.title} className="rounded-3xl border border-border/70 bg-background/60 p-4 shadow-soft">
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+                    <item.icon className="h-4 w-4" />
+                  </div>
+                  <h4 className="mt-4 font-display text-xl font-semibold">{item.title}</h4>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.text}</p>
+                </div>
+              ))}
             </div>
           </Card>
         </section>
@@ -208,8 +305,48 @@ export default function TravelSaaS() {
           <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-soft sm:p-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Destination spotlight</p>
+                <h3 className="mt-2 font-display text-3xl font-semibold">A curated shortlist with real travel language</h3>
+              </div>
+              <Button className="rounded-2xl">
+                Explore more
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {DESTINATIONS.map((destination) => (
+                <div key={destination.name} className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-background/70 shadow-soft transition hover:-translate-y-1 hover:shadow-elegant">
+                  <img src={destination.image} alt={destination.name} className="h-44 w-full object-cover" />
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-display text-xl font-semibold">{destination.name}</div>
+                        <div className="text-sm text-muted-foreground">{destination.country}</div>
+                      </div>
+                      <Badge variant="secondary" className="rounded-full">{destination.region}</Badge>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{destination.summary}</p>
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <div className="text-sm text-muted-foreground">from</div>
+                      <div className="font-display text-xl font-semibold">{currency(destination.price)}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </section>
+
+        <section className="pt-8">
+          <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-soft sm:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Roadmap</p>
                 <h3 className="mt-2 font-display text-3xl font-semibold">From trip search to full concierge</h3>
+                <p className="mt-3 text-muted-foreground">
+                  This is the foundation for a product that can later include live APIs, Supabase accounts, price alerts and a real booking flow.
+                </p>
               </div>
               <Button className="rounded-2xl">
                 Continue build
@@ -276,4 +413,8 @@ function Line({ text }: { text: string }) {
       <span>{text}</span>
     </div>
   );
+}
+
+function currency(amount: number) {
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(amount);
 }
