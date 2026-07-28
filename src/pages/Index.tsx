@@ -1,1 +1,1 @@
-export { default } from "./CompleteTravelPlanner";
+export { default } from "./TravelPlannerPro";
