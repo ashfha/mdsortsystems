@@ -2,25 +2,25 @@ import { useMemo, useState, type ElementType } from "react";
 import {
   ArrowRight,
   BadgeCheck,
+  Brain,
   CalendarDays,
   CheckCircle2,
+  Clock3,
   Compass,
   Heart,
   Hotel,
   MapPin,
+  PanelTop,
   Plane,
+  Route,
   Search,
+  ShieldCheck,
+  Sparkle,
   Sparkles,
   Star,
   Users,
   Wallet,
   Waves,
-  PanelTop,
-  ShieldCheck,
-  Sparkle,
-  Brain,
-  Clock3,
-  Route,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,14 +28,14 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-const TYPE_CARDS = [
+const TRAVEL_TYPES = [
   { label: "Honeymoon", description: "Privat, ruhig, hochwertig, schöne Sonnenuntergänge." },
   { label: "Partyurlaub", description: "Kurze Wege, Nachtleben, Beach Clubs, zentrale Hotels." },
   { label: "Familienurlaub", description: "Ruhige Hotels, Pool, einfache Transfers, wenig Stress." },
   { label: "Wellness", description: "Spa, gutes Essen, langsames Tempo, gute Erholung." },
   { label: "Kulturtrip", description: "Altstadt, Museen, Architektur und gute Restaurants." },
   { label: "Adventure", description: "Natur, Aktivität, Ausflüge und besondere Erlebnisse." },
-];
+] as const;
 
 const CHECKLISTS = [
   "Direktflug",
@@ -50,7 +50,7 @@ const CHECKLISTS = [
   "Bestes Preis-Leistungs-Verhältnis",
   "Flexibles Datum",
   "Nur ruhige Hotels",
-];
+] as const;
 
 const DESTINATIONS = [
   {
@@ -60,6 +60,8 @@ const DESTINATIONS = [
     summary: "Easy beach escape with good hotels and short flights.",
     image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80",
     price: 860,
+    fit: 95,
+    vibe: ["Beach", "Easy flights", "Great value"],
   },
   {
     name: "Dubai",
@@ -68,6 +70,8 @@ const DESTINATIONS = [
     summary: "Luxury skyline, shopping and winter sun.",
     image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1400&q=80",
     price: 1320,
+    fit: 89,
+    vibe: ["Luxury", "Sun", "Service"],
   },
   {
     name: "Bangkok",
@@ -76,6 +80,8 @@ const DESTINATIONS = [
     summary: "Food, culture and extremely strong value.",
     image: "https://images.unsplash.com/photo-1508009603885-50cf7c579365?auto=format&fit=crop&w=1400&q=80",
     price: 1180,
+    fit: 92,
+    vibe: ["Food", "Culture", "Value"],
   },
   {
     name: "Cape Town",
@@ -84,8 +90,45 @@ const DESTINATIONS = [
     summary: "Ocean, mountains and a real outdoors mix.",
     image: "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?auto=format&fit=crop&w=1400&q=80",
     price: 1490,
+    fit: 87,
+    vibe: ["Nature", "Views", "Adventure"],
   },
+] as const;
+
+const LIVE_PHASES = [
+  "Understand the trip brief",
+  "Match destination and season",
+  "Compare flights and hotels",
+  "Build itinerary and budget",
+  "Export plan and save it",
 ];
+
+const FEATURE_STACK = [
+  { icon: Search, title: "Natural language search", text: "Users write what they want in their own words." },
+  { icon: MapPin, title: "Worldwide coverage", text: "Cities, airports, weather, safety and entry rules." },
+  { icon: Hotel, title: "Hotel intelligence", text: "Location, rating, price, vibe and guest fit." },
+  { icon: CalendarDays, title: "Vacation plan", text: "Flights, hotels, daily plan and a clear budget." },
+] as const;
+
+const ROADMAP = [
+  { icon: Brain, title: "AI travel profile", text: "Turns free text into a structured preference model." },
+  { icon: Plane, title: "Live flight offers", text: "Shows route, duration, layovers and price buckets." },
+  { icon: Hotel, title: "Hotel shortlist", text: "Sorts stays by fit, rating and value." },
+  { icon: Clock3, title: "Daily plan", text: "Creates a sensible itinerary for each day." },
+  { icon: Route, title: "Map layer", text: "Collects places and presents them on a map." },
+  { icon: ShieldCheck, title: "Travel safety", text: "Adds entry rules, visa and security info." },
+] as const;
+
+const CONTROL_CHECKS = [
+  "Direct flight",
+  "Flight under 8h",
+  "1 stop max",
+  "Family-friendly",
+  "Adults-only hotel",
+  "Spa / wellness",
+  "Beach resort",
+  "Best price-value",
+] as const;
 
 export default function TravelSaaS() {
   const [brief, setBrief] = useState("I want warm weather, good food, no party, max 2200€, from Stuttgart, 7 days");
@@ -93,11 +136,22 @@ export default function TravelSaaS() {
   const [people, setPeople] = useState(2);
   const [departureDate, setDepartureDate] = useState("2026-09-10");
   const [tripLength, setTripLength] = useState(7);
+  const [selectedDestination, setSelectedDestination] = useState<(typeof DESTINATIONS)[number]>(DESTINATIONS[0]);
+  const [controls, setControls] = useState<string[]>(["Direct flight", "Best price-value"]);
 
   const preview = useMemo(
     () => `${people} Personen · bis ${currency(budget)} · ${tripLength} Tage · Abflug ${departureDate}`,
     [budget, people, departureDate, tripLength],
   );
+
+  const totalPrice = selectedDestination.price + budget * 0.12;
+  const matchLabel = selectedDestination.fit >= 92 ? "Excellent match" : selectedDestination.fit >= 88 ? "Strong match" : "Good fit";
+
+  function toggleControl(value: string) {
+    setControls((current) =>
+      current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -121,7 +175,7 @@ export default function TravelSaaS() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6 lg:px-8 lg:pt-12">
-        <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+        <section className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-start">
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs text-muted-foreground shadow-soft">
               <Sparkles className="h-3.5 w-3.5 text-accent" />
@@ -193,9 +247,22 @@ export default function TravelSaaS() {
                 </div>
               </div>
 
-              <div className="mt-4 rounded-3xl border border-border/70 bg-background/55 p-4 text-sm text-muted-foreground">
-                {preview}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {CONTROL_CHECKS.map((item) => (
+                  <button
+                    key={item}
+                    onClick={() => toggleControl(item)}
+                    className={`rounded-2xl border px-3 py-2 text-left text-sm transition ${controls.includes(item) ? "border-primary bg-primary/5 text-foreground" : "border-border/70 bg-background/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className={`h-4 w-4 ${controls.includes(item) ? "text-primary" : "text-muted-foreground"}`} />
+                      {item}
+                    </span>
+                  </button>
+                ))}
               </div>
+
+              <div className="mt-4 rounded-3xl border border-border/70 bg-background/55 p-4 text-sm text-muted-foreground">{preview}</div>
             </Card>
           </div>
 
@@ -210,7 +277,7 @@ export default function TravelSaaS() {
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {TYPE_CARDS.map((item) => (
+                {TRAVEL_TYPES.map((item) => (
                   <div key={item.label} className="rounded-3xl border border-border/70 bg-background/60 p-4 transition hover:-translate-y-0.5 hover:shadow-soft">
                     <div className="flex items-center gap-3">
                       <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><Compass className="h-4 w-4" /></div>
@@ -231,10 +298,10 @@ export default function TravelSaaS() {
               </div>
             </Card>
 
-            <Card className="overflow-hidden rounded-[2rem] border-border/70 bg-card shadow-elegant">
+            <Card className="rounded-[2rem] border-border/70 bg-card shadow-elegant">
               <div className="relative">
-                <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80" alt="Travel overview" className="h-72 w-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                <img src={selectedDestination.image} alt={selectedDestination.name} className="h-72 w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
                 <div className="absolute bottom-5 left-5 right-5">
                   <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-foreground backdrop-blur">
                     <Waves className="h-3.5 w-3.5" />
@@ -253,10 +320,9 @@ export default function TravelSaaS() {
         </section>
 
         <section className="section-spacer grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Feature icon={Search} title="Natural language search" text="Users write what they want in their own words." />
-          <Feature icon={MapPin} title="Worldwide coverage" text="Cities, airports, weather, safety and entry rules." />
-          <Feature icon={Hotel} title="Hotel intelligence" text="Location, rating, price, vibe and guest fit." />
-          <Feature icon={CalendarDays} title="Vacation plan" text="Flights, hotels, daily plan and a clear budget." />
+          {FEATURE_STACK.map((item) => (
+            <Feature key={item.title} icon={item.icon} title={item.title} text={item.text} />
+          ))}
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
@@ -281,14 +347,7 @@ export default function TravelSaaS() {
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {[
-                { icon: Brain, title: "AI travel profile", text: "Turns free text into a structured preference model." },
-                { icon: Plane, title: "Live flight offers", text: "Shows route, duration, layovers and price buckets." },
-                { icon: Hotel, title: "Hotel shortlist", text: "Sorts stays by fit, rating and value." },
-                { icon: Clock3, title: "Daily plan", text: "Creates a sensible itinerary for each day." },
-                { icon: Route, title: "Map layer", text: "Collects places and presents them on a map." },
-                { icon: ShieldCheck, title: "Travel safety", text: "Adds entry rules, visa and security info." },
-              ].map((item) => (
+              {ROADMAP.map((item) => (
                 <div key={item.title} className="rounded-3xl border border-border/70 bg-background/60 p-4 shadow-soft">
                   <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
                     <item.icon className="h-4 w-4" />
@@ -315,27 +374,93 @@ export default function TravelSaaS() {
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {DESTINATIONS.map((destination) => (
-                <div key={destination.name} className="overflow-hidden rounded-[1.75rem] border border-border/70 bg-background/70 shadow-soft transition hover:-translate-y-1 hover:shadow-elegant">
-                  <img src={destination.image} alt={destination.name} className="h-44 w-full object-cover" />
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-display text-xl font-semibold">{destination.name}</div>
-                        <div className="text-sm text-muted-foreground">{destination.country}</div>
+              {DESTINATIONS.map((destination) => {
+                const active = destination.name === selectedDestination.name;
+                return (
+                  <button key={destination.name} onClick={() => setSelectedDestination(destination)} className="text-left">
+                    <div className={`overflow-hidden rounded-[1.75rem] border shadow-soft transition hover:-translate-y-1 hover:shadow-elegant ${active ? "border-primary bg-primary/5" : "border-border/70 bg-background/70"}`}>
+                      <img src={destination.image} alt={destination.name} className="h-44 w-full object-cover" />
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-display text-xl font-semibold">{destination.name}</div>
+                            <div className="text-sm text-muted-foreground">{destination.country}</div>
+                          </div>
+                          <Badge variant="secondary" className="rounded-full">{destination.region}</Badge>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-muted-foreground">{destination.summary}</p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {destination.vibe.map((vibe) => <Badge key={vibe} variant="secondary" className="rounded-full">{vibe}</Badge>)}
+                        </div>
+                        <div className="mt-4 flex items-center justify-between gap-3">
+                          <div className="text-sm text-muted-foreground">from</div>
+                          <div className="font-display text-xl font-semibold">{currency(destination.price)}</div>
+                        </div>
                       </div>
-                      <Badge variant="secondary" className="rounded-full">{destination.region}</Badge>
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-muted-foreground">{destination.summary}</p>
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <div className="text-sm text-muted-foreground">from</div>
-                      <div className="font-display text-xl font-semibold">{currency(destination.price)}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </Card>
+        </section>
+
+        <section className="pt-8">
+          <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+            <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-soft">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Planner preview</p>
+              <h3 className="mt-2 font-display text-3xl font-semibold">Selected destination summary</h3>
+              <div className="mt-4 rounded-3xl border border-border/60 bg-background/60 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-display text-2xl font-semibold">{selectedDestination.name}</div>
+                    <div className="text-sm text-muted-foreground">{selectedDestination.country} · {selectedDestination.region}</div>
+                  </div>
+                  <Badge variant="secondary" className="rounded-full">{matchLabel}</Badge>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  <MiniStat icon={Search} label="Match" value={`${selectedDestination.fit}/100`} />
+                  <MiniStat icon={Wallet} label="Price" value={currency(Math.round(totalPrice))} />
+                  <MiniStat icon={CalendarDays} label="Length" value={`${tripLength} days`} />
+                </div>
+                <p className="mt-4 text-sm leading-7 text-muted-foreground">{selectedDestination.summary}</p>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground"><BadgeCheck className="h-4 w-4 text-accent" />Why it fits</div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedDestination.vibe.map((item) => <Badge key={item} className="rounded-full">{item}</Badge>)}
+                </div>
+              </div>
+            </Card>
+
+            <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-elegant">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Concierge steps</p>
+                  <h3 className="mt-2 font-display text-3xl font-semibold">The product flow</h3>
+                </div>
+                <Badge variant="secondary" className="rounded-full">SaaS ready</Badge>
+              </div>
+              <div className="mt-5 space-y-3">
+                {LIVE_PHASES.map((phase, index) => (
+                  <div key={phase} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background/60 p-4">
+                    <div className="grid h-9 w-9 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">{index + 1}</div>
+                    <div className="font-medium">{phase}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 rounded-3xl border border-border/60 bg-background/60 p-4">
+                <div className="text-sm text-muted-foreground">Core output</div>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <PlanStat label="Flight" value="Best match" />
+                  <PlanStat label="Hotel" value="Best fit" />
+                  <PlanStat label="Daily plan" value="Auto-generated" />
+                  <PlanStat label="Budget" value="Transparent" />
+                </div>
+              </div>
+            </Card>
+          </div>
         </section>
 
         <section className="pt-8">
@@ -411,6 +536,15 @@ function Line({ text }: { text: string }) {
     <div className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/60 p-4">
       <BadgeCheck className="mt-0.5 h-4 w-4 text-accent" />
       <span>{text}</span>
+    </div>
+  );
+}
+
+function PlanStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/80 p-3 text-center">
+      <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{label}</div>
+      <div className="mt-1 font-display text-lg font-semibold">{value}</div>
     </div>
   );
 }
