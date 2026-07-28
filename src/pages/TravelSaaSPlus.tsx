@@ -5,32 +5,38 @@ import {
   Brain,
   CalendarDays,
   CheckCircle2,
+  Clock3,
   Compass,
   Heart,
   Hotel,
+  ListChecks,
   MapPin,
   Plane,
+  Route,
+  Search,
   ShieldCheck,
   Sparkles,
   Star,
   Users,
   Wallet,
   Waves,
-  Clock3,
-  Route,
-  Search,
-  Ticket,
-  Globe,
-  Loader2,
-  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  buildAccountPreview,
+  buildLiveHooks,
+  parseTravelBrief,
+  rankDestinations,
+  type LiveHook,
+  type RankedDestination,
+  type TravelDestination,
+} from "@/lib/travelConcierge";
 
-const TYPES = [
+const TYPE_OPTIONS = [
   { label: "Honeymoon", tone: "Romantic, private, premium" },
   { label: "Partyurlaub", tone: "Nightlife, clubs, central" },
   { label: "Familienurlaub", tone: "Easy, calm, practical" },
@@ -54,7 +60,7 @@ const CHECKS = [
   "Bestes Preis-Leistungs-Verhältnis",
 ] as const;
 
-const MOCK_DESTINATIONS = [
+const DESTINATIONS: TravelDestination[] = [
   {
     name: "Mallorca",
     country: "Spain",
@@ -103,7 +109,7 @@ const MOCK_DESTINATIONS = [
     summary: "Nature, ocean and a real outdoors trip feeling.",
     tags: ["Nature", "Views", "Adventure"],
   },
-] as const;
+];
 
 const ROADMAP = [
   { icon: Brain, title: "AI profile", text: "Free text becomes a structured travel profile." },
@@ -123,34 +129,50 @@ const ACCOUNT_FEATURES = [
   "Bewertungen und Notizen",
 ];
 
+const ACCOUNT_SIDEBAR = [
+  "Login per Supabase",
+  "Saved trips",
+  "Shared itineraries",
+  "Price alerts",
+  "Notes and ratings",
+  "Future premium concierge",
+];
+
 export default function TravelSaaSPlus() {
   const [brief, setBrief] = useState("I want warm weather, good food, no party, max 2200€, from Stuttgart, 7 days");
   const [budget, setBudget] = useState(2200);
   const [people, setPeople] = useState(2);
   const [days, setDays] = useState(7);
   const [departureDate, setDepartureDate] = useState("2026-09-10");
-  const [selectedType, setSelectedType] = useState<(typeof TYPES)[number]>(TYPES[6]);
-  const [selectedDestination, setSelectedDestination] = useState<(typeof MOCK_DESTINATIONS)[number]>(MOCK_DESTINATIONS[0]);
+  const [selectedType, setSelectedType] = useState<(typeof TYPE_OPTIONS)[number]>(TYPE_OPTIONS[6]);
+  const [selectedDestination, setSelectedDestination] = useState<TravelDestination>(DESTINATIONS[0]);
   const [controls, setControls] = useState<string[]>(["Direktflug", "Bestes Preis-Leistungs-Verhältnis"]);
 
-  const summary = useMemo(() => {
-    const total = selectedDestination.flight + selectedDestination.hotel + Math.round(budget * 0.12);
-    return {
-      total,
-      flight: selectedDestination.flight,
-      hotel: selectedDestination.hotel,
-      fit: selectedDestination.score,
-      label: selectedDestination.score >= 94 ? "Perfect fit" : selectedDestination.score >= 90 ? "Strong fit" : "Good fit",
-    };
-  }, [budget, selectedDestination]);
+  const profile = useMemo(
+    () =>
+      parseTravelBrief({
+        brief,
+        budget,
+        people,
+        days,
+        departureDate,
+        selectedType: selectedType.label,
+        controls,
+      }),
+    [brief, budget, people, days, departureDate, selectedType.label, controls],
+  );
 
-  const profileText = useMemo(
+  const ranked = useMemo(() => rankDestinations(DESTINATIONS, profile), [profile]);
+  const active = ranked.find((item) => item.name === selectedDestination.name) ?? ranked[0];
+  const account = useMemo(() => buildAccountPreview(profile, ranked.length), [profile, ranked.length]);
+  const liveHooks = useMemo(() => buildLiveHooks(active, profile), [active, profile]);
+  const preview = useMemo(
     () => `${people} Personen · ${days} Tage · ${currency(budget)} Budget · Abflug ${departureDate}`,
-    [people, days, budget, departureDate],
+    [budget, people, departureDate, days],
   );
 
   function toggleControl(item: string) {
-    setControls((current) => current.includes(item) ? current.filter((value) => value !== item) : [...current, item]);
+    setControls((current) => (current.includes(item) ? current.filter((value) => value !== item) : [...current, item]));
   }
 
   return (
@@ -165,8 +187,8 @@ export default function TravelSaaSPlus() {
             </div>
           </div>
           <div className="hidden items-center gap-2 md:flex">
-            <Badge variant="secondary" className="rounded-full px-3 py-2">Live search ready</Badge>
-            <Badge variant="secondary" className="rounded-full px-3 py-2">Supabase ready</Badge>
+            <Badge variant="secondary" className="rounded-full px-3 py-2">Search engine</Badge>
+            <Badge variant="secondary" className="rounded-full px-3 py-2">Account ready</Badge>
             <Button size="sm" className="rounded-full">Get started</Button>
           </div>
         </div>
@@ -260,7 +282,7 @@ export default function TravelSaaSPlus() {
                 ))}
               </div>
 
-              <div className="mt-4 rounded-3xl border border-border/70 bg-background/55 p-4 text-sm text-muted-foreground">{profileText}</div>
+              <div className="mt-4 rounded-3xl border border-border/70 bg-background/55 p-4 text-sm text-muted-foreground">{preview}</div>
             </Card>
           </div>
 
@@ -275,11 +297,11 @@ export default function TravelSaaSPlus() {
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {TYPES.map((item) => {
-                  const active = item.label === selectedType.label;
+                {TYPE_OPTIONS.map((item) => {
+                  const activeType = item.label === selectedType.label;
                   return (
                     <button key={item.label} onClick={() => setSelectedType(item)} className="text-left">
-                      <div className={`rounded-3xl border p-4 transition hover:-translate-y-0.5 hover:shadow-soft ${active ? "border-primary bg-primary/5" : "border-border/70 bg-background/60"}`}>
+                      <div className={`rounded-3xl border p-4 transition hover:-translate-y-0.5 hover:shadow-soft ${activeType ? "border-primary bg-primary/5" : "border-border/70 bg-background/60"}`}>
                         <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><Compass className="h-4 w-4" /></div>
                         <div className="mt-3 font-medium">{item.label}</div>
                         <div className="mt-1 text-xs text-muted-foreground">{item.tone}</div>
@@ -290,14 +312,14 @@ export default function TravelSaaSPlus() {
               </div>
             </Card>
 
-            <Card className="rounded-[2rem] border-border/70 bg-card shadow-elegant">
+            <Card className="overflow-hidden rounded-[2rem] border-border/70 bg-card shadow-elegant">
               <div className="relative">
-                <img src={selectedDestination.image} alt={selectedDestination.name} className="h-72 w-full object-cover" />
+                <img src={active?.image ?? selectedDestination.image} alt={active?.name ?? selectedDestination.name} className="h-72 w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
                 <div className="absolute bottom-5 left-5 right-5">
                   <div className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-foreground backdrop-blur">
                     <Waves className="h-3.5 w-3.5" />
-                    Premium travel matching
+                    Smart destination ranking
                   </div>
                   <h3 className="mt-3 max-w-xl font-display text-3xl font-semibold text-white">A modern travel assistant that feels like a product, not a demo.</h3>
                 </div>
@@ -353,12 +375,110 @@ export default function TravelSaaSPlus() {
           </Card>
         </section>
 
+        <section className="pt-8 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-soft">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Ranking result</p>
+            <h3 className="mt-2 font-display text-3xl font-semibold">Your current best match</h3>
+            <div className="mt-4 rounded-3xl border border-border/60 bg-background/60 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-display text-2xl font-semibold">{active?.name}</div>
+                  <div className="text-sm text-muted-foreground">{active?.country} · {active?.region}</div>
+                </div>
+                <Badge variant="secondary" className="rounded-full">{active?.fitScore ?? 0}/100</Badge>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <MiniStat icon={Search} label="Match" value={`${active?.fitScore ?? 0}/100`} />
+                <MiniStat icon={Wallet} label="Flight" value={currency(active?.flight ?? 0)} />
+                <MiniStat icon={Hotel} label="Hotel" value={currency(active?.hotel ?? 0)} />
+              </div>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">{active?.summary}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {active?.tags.map((tag) => <Badge key={tag} className="rounded-full">{tag}</Badge>)}
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {(active?.reasons ?? []).slice(0, 4).map((reason) => (
+                <div key={reason} className="flex items-start gap-2 rounded-2xl border border-border/60 bg-background/60 p-3 text-sm text-muted-foreground">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                  <span>{reason}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-elegant">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Live API hooks</p>
+                <h3 className="mt-2 font-display text-3xl font-semibold">The three backend calls</h3>
+              </div>
+              <Badge variant="secondary" className="rounded-full">Hooked up</Badge>
+            </div>
+            <div className="mt-5 space-y-3">
+              {liveHooks.map((hook) => (
+                <HookCard key={hook.label} hook={hook} />
+              ))}
+            </div>
+            <div className="mt-5 rounded-3xl border border-border/60 bg-background/60 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Why the hooks matter</div>
+              <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                The UI can now hand the structured profile to flight search, hotel search and profile parsing functions instead of staying a static demo.
+              </p>
+            </div>
+          </Card>
+        </section>
+
+        <section className="pt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
+          <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-soft">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Account preview</p>
+                <h3 className="mt-2 font-display text-3xl font-semibold">Supabase-ready user profile</h3>
+              </div>
+              <Badge variant="secondary" className="rounded-full">Accounts</Badge>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <AccountStat label="Saved trips" value={String(account.savedTrips)} />
+              <AccountStat label="Favorites" value={String(account.favorites)} />
+              <AccountStat label="History items" value={String(account.searchHistory)} />
+              <AccountStat label="Shared trips" value={String(account.sharedTrips)} />
+            </div>
+            <div className="mt-5 rounded-3xl border border-border/60 bg-background/60 p-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Next trip</div>
+              <div className="mt-2 font-display text-xl font-semibold">{account.nextTripName}</div>
+              <div className="mt-1 text-sm text-muted-foreground">Budget {account.budgetLabel} · login, save and revisit later.</div>
+            </div>
+          </Card>
+
+          <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-elegant">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Account features</p>
+            <h3 className="mt-2 font-display text-3xl font-semibold">Built for later SaaS flow</h3>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {ACCOUNT_FEATURES.map((item) => (
+                <div key={item} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background/60 p-4 text-sm">
+                  <CheckCircle2 className="h-4 w-4 text-accent" />
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {ACCOUNT_SIDEBAR.map((item) => (
+                <div key={item} className="rounded-2xl border border-border/60 bg-background/60 p-4 text-sm text-muted-foreground">
+                  {item}
+                </div>
+              ))}
+            </div>
+          </Card>
+        </section>
+
         <section className="pt-8">
           <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-soft sm:p-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Destination spotlight</p>
-                <h3 className="mt-2 font-display text-3xl font-semibold">A curated shortlist with real travel language</h3>
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Destination shortlist</p>
+                <h3 className="mt-2 font-display text-3xl font-semibold">Ranked results, not random cards</h3>
               </div>
               <Button className="rounded-2xl">
                 Explore more
@@ -367,57 +487,56 @@ export default function TravelSaaSPlus() {
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {MOCK_DESTINATIONS.map((destination) => {
-                const active = destination.name === selectedDestination.name;
-                return (
-                  <button key={destination.name} onClick={() => setSelectedDestination(destination)} className="text-left">
-                    <div className={`overflow-hidden rounded-[1.75rem] border shadow-soft transition hover:-translate-y-1 hover:shadow-elegant ${active ? "border-primary bg-primary/5" : "border-border/70 bg-background/70"}`}>
-                      <img src={destination.image} alt={destination.name} className="h-44 w-full object-cover" />
-                      <div className="p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="font-display text-xl font-semibold">{destination.name}</div>
-                            <div className="text-sm text-muted-foreground">{destination.country}</div>
-                          </div>
-                          <Badge variant="secondary" className="rounded-full">{destination.region}</Badge>
+              {ranked.map((destination) => (
+                <button key={destination.name} onClick={() => setSelectedDestination(destination)} className="text-left">
+                  <div className={`overflow-hidden rounded-[1.75rem] border shadow-soft transition hover:-translate-y-1 hover:shadow-elegant ${selectedDestination.name === destination.name ? "border-primary bg-primary/5" : "border-border/70 bg-background/70"}`}>
+                    <img src={destination.image} alt={destination.name} className="h-44 w-full object-cover" />
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-display text-xl font-semibold">{destination.name}</div>
+                          <div className="text-sm text-muted-foreground">{destination.country}</div>
                         </div>
-                        <p className="mt-3 text-sm leading-6 text-muted-foreground">{destination.summary}</p>
-                        <div className="mt-4 flex flex-wrap gap-2">{destination.tags.map((tag) => <Badge key={tag} variant="secondary" className="rounded-full">{tag}</Badge>)}</div>
-                        <div className="mt-4 flex items-center justify-between gap-3">
-                          <div className="text-sm text-muted-foreground">from</div>
-                          <div className="font-display text-xl font-semibold">{currency(destination.price)}</div>
-                        </div>
+                        <Badge variant="secondary" className="rounded-full">{destination.fitScore}/100</Badge>
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">{destination.summary}</p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {destination.tags.map((tag) => <Badge key={tag} variant="secondary" className="rounded-full">{tag}</Badge>)}
+                      </div>
+                      <div className="mt-4 flex items-center justify-between gap-3">
+                        <div className="text-sm text-muted-foreground">from</div>
+                        <div className="font-display text-xl font-semibold">{currency(destination.totalPrice)}</div>
                       </div>
                     </div>
-                  </button>
-                );
-              })}
+                  </div>
+                </button>
+              ))}
             </div>
           </Card>
         </section>
 
         <section className="pt-8 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
           <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-soft">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Selected destination summary</p>
-            <h3 className="mt-2 font-display text-3xl font-semibold">{selectedDestination.name}</h3>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Current profile</p>
+            <h3 className="mt-2 font-display text-3xl font-semibold">What the system detected</h3>
             <div className="mt-4 rounded-3xl border border-border/60 bg-background/60 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm text-muted-foreground">{selectedDestination.country} · {selectedDestination.region}</div>
-                  <div className="mt-1 font-display text-2xl font-semibold">{matchLabel}</div>
+                  <div className="font-display text-2xl font-semibold">{selectedType.label}</div>
+                  <div className="text-sm text-muted-foreground">{profile.climate} climate · {profile.vibe} vibe</div>
                 </div>
-                <Badge variant="secondary" className="rounded-full">{summary.fit}/100</Badge>
+                <Badge variant="secondary" className="rounded-full">{profile.priorities.length || 1} priorities</Badge>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <MiniStat icon={Search} label="Match" value={`${summary.fit}/100`} />
-                <MiniStat icon={Wallet} label="Flight" value={currency(summary.flight)} />
-                <MiniStat icon={Hotel} label="Hotel" value={currency(summary.hotel)} />
+                <MiniStat icon={Search} label="Budget" value={currency(profile.budget)} />
+                <MiniStat icon={Plane} label="Max flight" value={profile.maxFlightHours ? `${profile.maxFlightHours}h` : "Flexible"} />
+                <MiniStat icon={Users} label="Travelers" value={String(profile.people)} />
               </div>
-              <p className="mt-4 text-sm leading-7 text-muted-foreground">{selectedDestination.summary}</p>
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">{profile.brief}</p>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              {selectedDestination.tags.map((tag) => <Badge key={tag} className="rounded-full">{tag}</Badge>)}
+              {profile.priorities.length ? profile.priorities.map((item) => <Badge key={item} className="rounded-full">{item}</Badge>) : <Badge className="rounded-full">Flexible</Badge>}
             </div>
           </Card>
 
@@ -441,39 +560,10 @@ export default function TravelSaaSPlus() {
 
             <div className="mt-5 rounded-3xl border border-border/60 bg-background/60 p-4">
               <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Estimated total</div>
-              <div className="mt-2 font-display text-3xl font-semibold">{currency(summary.total)}</div>
+              <div className="mt-2 font-display text-3xl font-semibold">{currency(active?.totalPrice ?? 0)}</div>
               <p className="mt-2 text-sm leading-7 text-muted-foreground">
                 This combines flight, hotel and a small buffer so the plan feels like a real travel budget.
               </p>
-            </div>
-          </Card>
-        </section>
-
-        <section className="pt-8 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-soft">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Account preview</p>
-            <h3 className="mt-2 font-display text-3xl font-semibold">Supabase-ready user experience</h3>
-            <div className="mt-5 space-y-3">
-              {ACCOUNT_FEATURES.map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background/60 p-4 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-accent" />
-                  {item}
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="rounded-[2rem] border-border/70 bg-card p-6 shadow-elegant">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Build phases</p>
-            <h3 className="mt-2 font-display text-3xl font-semibold">From concept to SaaS</h3>
-            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {ROADMAP.map((item) => (
-                <div key={item.title} className="rounded-3xl border border-border/60 bg-background/60 p-4">
-                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-primary-foreground"><item.icon className="h-4 w-4" /></div>
-                  <h4 className="mt-4 font-display text-xl font-semibold">{item.title}</h4>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.text}</p>
-                </div>
-              ))}
             </div>
           </Card>
         </section>
@@ -518,6 +608,33 @@ function Line({ text }: { text: string }) {
     <div className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/60 p-4">
       <BadgeCheck className="mt-0.5 h-4 w-4 text-accent" />
       <span>{text}</span>
+    </div>
+  );
+}
+
+function HookCard({ hook }: { hook: LiveHook }) {
+  return (
+    <div className="rounded-3xl border border-border/60 bg-background/60 p-4 shadow-soft">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="font-medium">{hook.label}</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{hook.method} · {hook.endpoint}</div>
+        </div>
+        <Badge variant="secondary" className="rounded-full">Ready</Badge>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">{hook.note}</p>
+      <div className="mt-3 rounded-2xl border border-border/60 bg-background/80 p-3 text-xs text-muted-foreground">
+        {JSON.stringify(hook.body, null, 2)}
+      </div>
+    </div>
+  );
+}
+
+function AccountStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-3xl border border-border/70 bg-background/70 p-4 text-center shadow-soft">
+      <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{label}</div>
+      <div className="mt-1 font-display text-2xl font-semibold">{value}</div>
     </div>
   );
 }
