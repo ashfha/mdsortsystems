@@ -4,7 +4,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import ThemeProvider from "./providers/ThemeProvider";
+import { ThemeProvider } from "./providers/ThemeProvider";
 
 const Index = lazy(() => import("./pages/Index"));
 const queryClient = new QueryClient();
